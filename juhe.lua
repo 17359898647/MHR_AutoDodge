@@ -75,12 +75,12 @@ local function getActionInfo()
     if not initMaster() then return "" end
     
     local info = string.format(
-        "动作ID信息:\n类别(Category): %d\n索引(Index): %d\n动作ID(MotionID): %d\n武器类型: %d\n武器状态: %s", 
+        "DongZuo ID XinXi:\nLeiBie(Category): %d\nSuoYin(Index): %d\nDongZuoID(MotionID): %d\nWuQiLeiXing: %d\nWuQiZhuangTai: %s", 
         action_cata, 
         action_index, 
         motionID, 
         weaponType, 
-        isWeaponOn and "已拔出" or "已收起"
+        isWeaponOn and "YiBaChu" or "YiShouQi"
     )
     
     return info
@@ -98,7 +98,7 @@ local function printActionInfo(force)
     -- 只有当动作信息变化或强制打印时才输出
     if force or actionInfo ~= lastActionInfo then
         if ConfigManager.showInGameMsg then
-            re.msg(actionInfo)
+            log.debug(actionInfo)
         end
         
         if ConfigManager.logToConsole then
@@ -129,7 +129,7 @@ local function performDodge()
         isDodging = true
         
         if ConfigManager.dodgeNotify then
-            re.msg("执行自动闪避！")
+            log.debug("ZhiXing ZiDong ShanBi!")
         end
         
         return true
@@ -308,19 +308,19 @@ re.on_draw_ui(
         end
         
         -- 添加动作ID监控配置节点
-        if imgui.tree_node("动作ID监控") then
-            changed, ConfigManager.printActionID = imgui.checkbox("启用动作ID监控", 
+        if imgui.tree_node("DongZuo ID JianKong") then
+            changed, ConfigManager.printActionID = imgui.checkbox("QiYong DongZuo ID JianKong", 
                 ConfigManager.printActionID);
                 
             if ConfigManager.printActionID then
-                changed, ConfigManager.printActionDelay = imgui.drag_float("更新延迟(秒)", 
+                changed, ConfigManager.printActionDelay = imgui.drag_float("GengXin YanChi(miao)", 
                     ConfigManager.printActionDelay, 0.1, 0.1, 5.0);
-                changed, ConfigManager.showInGameMsg = imgui.checkbox("在游戏中显示消息", 
+                changed, ConfigManager.showInGameMsg = imgui.checkbox("ShuChu Dao Debug RiZhi", 
                     ConfigManager.showInGameMsg);
-                changed, ConfigManager.logToConsole = imgui.checkbox("输出到控制台", 
+                changed, ConfigManager.logToConsole = imgui.checkbox("ShuChu Dao Info RiZhi", 
                     ConfigManager.logToConsole);
                 
-                if imgui.button("立即打印当前动作ID") then
+                if imgui.button("LiJi DaYin DangQian DongZuo ID") then
                     printActionInfo(true)  -- 强制立即打印
                 end
                 
@@ -332,34 +332,34 @@ re.on_draw_ui(
         end
         
         -- 添加自动闪避配置节点
-        if imgui.tree_node("自动闪避") then
-            changed, ConfigManager.autoDodge = imgui.checkbox("启用自动闪避", 
+        if imgui.tree_node("ZiDong ShanBi") then
+            changed, ConfigManager.autoDodge = imgui.checkbox("QiYong ZiDong ShanBi", 
                 ConfigManager.autoDodge);
                 
             if ConfigManager.autoDodge then
-                changed, ConfigManager.dodgeCategory = imgui.drag_int("闪避动作类别", 
+                changed, ConfigManager.dodgeCategory = imgui.drag_int("ShanBi DongZuo LeiBie", 
                     ConfigManager.dodgeCategory, 1, 0, 100);
-                changed, ConfigManager.dodgeIndex = imgui.drag_int("闪避动作索引", 
+                changed, ConfigManager.dodgeIndex = imgui.drag_int("ShanBi DongZuo SuoYin", 
                     ConfigManager.dodgeIndex, 1, 0, 100);
-                changed, ConfigManager.dodgeDelay = imgui.drag_float("闪避延迟(秒)", 
+                changed, ConfigManager.dodgeDelay = imgui.drag_float("ShanBi YanChi(miao)", 
                     ConfigManager.dodgeDelay, 0.05, 0.0, 1.0);
-                changed, ConfigManager.dodgeNotify = imgui.checkbox("闪避时显示通知", 
+                changed, ConfigManager.dodgeNotify = imgui.checkbox("ShanBi Shi ShuChu Debug XiaoXi", 
                     ConfigManager.dodgeNotify);
                 
-                if imgui.button("测试闪避") and ConfigManager.dodgeCategory > 0 and ConfigManager.dodgeIndex > 0 then
+                if imgui.button("CeShi ShanBi") and ConfigManager.dodgeCategory > 0 and ConfigManager.dodgeIndex > 0 then
                     performDodge()
                 end
                 
                 -- 显示闪避状态
                 if isDodging then
-                    imgui.text_colored("正在闪避中...", 0.0, 1.0, 0.0, 1.0)
+                    imgui.text_colored("ZhengZai ShanBi Zhong...", 0.0, 1.0, 0.0, 1.0)
                 elseif os.clock() - lastDodgeTime < dodgeCooldown then
-                    imgui.text_colored(string.format("闪避冷却中 (%.1f秒)", dodgeCooldown - (os.clock() - lastDodgeTime)), 1.0, 0.5, 0.0, 1.0)
+                    imgui.text_colored(string.format("ShanBi LengQue Zhong (%.1f miao)", dodgeCooldown - (os.clock() - lastDodgeTime)), 1.0, 0.5, 0.0, 1.0)
                 else
-                    imgui.text_colored("闪避就绪", 0.0, 1.0, 0.0, 1.0)
+                    imgui.text_colored("ShanBi JiuXu", 0.0, 1.0, 0.0, 1.0)
                 end
                 
-                imgui.text_wrapped("使用方法：\n1. 启用自动闪避\n2. 设置闪避动作类别和索引\n3. 可以通过动作ID监控功能找到合适的闪避动作ID\n4. 使用'测试闪避'按钮测试设置是否有效")
+                imgui.text_wrapped("ShiYong FangFa:\n1. QiYong ZiDong ShanBi\n2. SheDing ShanBi DongZuo LeiBie He SuoYin\n3. KeYi TongGuo DongZuo ID JianKong GongNeng ZhaoDao HeShi De ShanBi DongZuo ID\n4. ShiYong 'CeShi ShanBi' AnNiu CeShi SheDing ShiFou YouXiao")
             end
             
             imgui.tree_pop()
