@@ -10,12 +10,16 @@ local motionID          -- 动作ID
 local gameObje          -- 游戏对象
 local auraLevel         -- 气刃等级
 local Isjianqie = false -- 是否为见切状态
+local isAutoDodge = false -- 是否启用自动躲避
+local autoDodgeActionID = nil -- 自动躲避动作ID
 
 -- 配置管理器
 local ConfigManager = {
     kabutowariShellNum = 7,  -- 兜割贝壳数量
     loopAuraLevel = true,   -- 是否保持红刃
-    nadaoTime = 3.5          -- 纳刀时间
+    nadaoTime = 3.5,         -- 纳刀时间
+    autoDodgeEnabled = false, -- 是否启用自动躲避
+    autoDodgeActionIndex = nil  -- 自动躲避动作索引，请填写动作ID
 }
 
 -- 获取组件函数
@@ -151,6 +155,18 @@ sdk.hook(
                     Isjianqie = true
                     return sdk.PreHookResult.SKIP_ORIGINAL
                 end
+                
+                -- 自动躲避逻辑
+                if ConfigManager.autoDodgeEnabled and hitinfo:get_field("<DamageOwner>k__BackingField"):get_Name() == "MasterPlayer" and ConfigManager.autoDodgeActionIndex ~= nil then
+                    -- 创建躲避动作ID
+                    local actionID = NewActionID(2, ConfigManager.autoDodgeActionIndex)
+                    
+                    -- 执行躲避动作
+                    if player:get_Character():call("changeActionRequest(app.AppActionDef.LAYER, ace.ACTION_ID, System.Boolean)", 0, actionID, false) then
+                        isAutoDodge = true
+                        return sdk.PreHookResult.SKIP_ORIGINAL
+                    end
+                end
             end
         end
     end,
@@ -174,6 +190,11 @@ sdk.hook(
                     damage_owner = ""
                     Isjianqie = false
                 end
+                
+                -- 重置自动躲避状态
+                if isAutoDodge == true then
+                    isAutoDodge = false
+                end
             end
         end
     end
@@ -193,22 +214,6 @@ sdk.hook(
     end
 )
 
--- UI绘制函数
--- 创建配置界面
-re.on_draw_ui(
-    function()
-        local changed = false
-        if imgui.tree_node("LongSword") then
-            changed, ConfigManager.loopAuraLevel = imgui.checkbox("hongren",  -- 红刃选项
-                ConfigManager.loopAuraLevel);
-            changed, ConfigManager.nadaoTime = imgui.drag_float("nadaoTime", ConfigManager.nadaoTime);  -- 纳刀时间选项
-            changed, ConfigManager.kabutowariShellNum = imgui.slider_int("denglong_hit", ConfigManager  -- 灯笼命中选项
-                .kabutowariShellNum, 7, 30);
-            imgui.tree_pop()
-        end
-    end
-)
-
 -- 太刀见切动作钩子函数
 sdk.hook(
     sdk.find_type_definition("app.Wp03_Export"):get_method(
@@ -222,6 +227,37 @@ sdk.hook(
                     Isjianqie = false
                 end
             end
+        end
+    end
+)
+
+-- UI绘制函数
+-- 创建配置界面
+re.on_draw_ui(
+    function()
+        local changed = false
+        if imgui.tree_node("LongSword") then
+            changed, ConfigManager.loopAuraLevel = imgui.checkbox("hongren",  -- 红刃选项
+                ConfigManager.loopAuraLevel);
+            changed, ConfigManager.nadaoTime = imgui.drag_float("nadaoTime", ConfigManager.nadaoTime);  -- 纳刀时间选项
+            changed, ConfigManager.kabutowariShellNum = imgui.slider_int("denglong_hit", ConfigManager  -- 灯笼命中选项
+                .kabutowariShellNum, 7, 30);
+                
+            -- 添加自动躲避选项
+            changed, ConfigManager.autoDodgeEnabled = imgui.checkbox("启用自动躲避", 
+                ConfigManager.autoDodgeEnabled);
+                
+            -- 添加动作ID输入框
+            if ConfigManager.autoDodgeEnabled then
+                changed, ConfigManager.autoDodgeActionIndex = imgui.input_int("躲避动作ID", 
+                    ConfigManager.autoDodgeActionIndex or 0);
+                
+                -- 添加说明文字
+                imgui.text("注意：请使用action_logger.lua记录躲避动作ID，")
+                imgui.text("然后在上方填写对应的动作ID值。")
+            end
+            
+            imgui.tree_pop()
         end
     end
 )
