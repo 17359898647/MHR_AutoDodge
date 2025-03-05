@@ -14,7 +14,7 @@ local Isjianqie = false -- 是否为见切状态
 -- 配置管理器
 local ConfigManager = {
     kabutowariShellNum = 7,  -- 兜割贝壳数量
-    loopAuraLevel = false,   -- 是否循环气刃等级
+    loopAuraLevel = true,   -- 是否保持红刃
     nadaoTime = 3.5          -- 纳刀时间
 }
 
