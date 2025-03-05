@@ -1,40 +1,44 @@
-local MasterPlayer
-local player
-local weaponType
-local isWeaponOn
-local action_index = 0
-local action_cata = 0
-local damage_owner = ""
-local motionID
-local gameObje
-local auraLevel
-local Isjianqie = false
+-- 游戏管理器相关变量
+local MasterPlayer      -- 玩家管理器单例
+local player            -- 主角玩家对象
+local weaponType        -- 武器类型
+local isWeaponOn        -- 武器是否拔出状态
+local action_index = 0  -- 当前动作索引
+local action_cata = 0   -- 当前动作类别
+local damage_owner = "" -- 伤害来源
+local motionID          -- 当前动作ID
+local gameObje          -- 游戏对象
+local auraLevel         -- 太刀气刃等级
+local Isjianqie = false -- 是否处于见切状态
 
 -- 添加动作ID监控相关变量
-local lastPrintTime = 0
-local lastActionInfo = ""
-local actionBankId = 0
+local lastPrintTime = 0   -- 上次打印动作信息的时间
+local lastActionInfo = "" -- 上次打印的动作信息
+local actionBankId = 0    -- 动作库ID
 
 -- 添加自动闪避相关变量
-local lastDodgeTime = 0
-local isDodging = false
-local dodgeCooldown = 1.0  -- 闪避冷却时间（秒）
+local lastDodgeTime = 0   -- 上次执行闪避的时间
+local isDodging = false   -- 是否正在执行闪避
+local dodgeCooldown = 1.0 -- 闪避冷却时间（秒）
 
 local ConfigManager = {
-    kabutowariShellNum = 7,
-    loopAuraLevel = false,
-    nadaoTime = 3.5,
+    -- 太刀相关配置
+    kabutowariShellNum = 7,  -- 兜割伤害次数
+    loopAuraLevel = false,   -- 是否无限红刃
+    nadaoTime = 3.5,         -- 纳刀时长
+    
     -- 动作ID监控配置
-    printActionID = true,
-    printActionDelay = 0.5,
-    showInGameMsg = true,
-    logToConsole = false,
+    printActionID = true,     -- 是否启用动作ID监控
+    printActionDelay = 0.5,   -- 动作ID打印延迟（秒）
+    showInGameMsg = true,     -- 是否在游戏中显示消息
+    logToConsole = false,     -- 是否输出到控制台
+    
     -- 自动闪避配置
-    autoDodge = false,  -- 是否启用自动闪避
-    dodgeCategory = 0,  -- 闪避动作类别，留空供用户填写
-    dodgeIndex = 0,     -- 闪避动作索引，留空供用户填写
-    dodgeDelay = 0.1,   -- 闪避延迟（秒）
-    dodgeNotify = true  -- 是否在闪避时显示通知
+    autoDodge = false,       -- 是否启用自动闪避
+    dodgeCategory = 0,       -- 闪避动作类别，需要用户填写
+    dodgeIndex = 0,          -- 闪避动作索引，需要用户填写
+    dodgeDelay = 0.1,        -- 闪避延迟（秒）
+    dodgeNotify = true       -- 是否在闪避时显示通知
 }
 
 -- 获取组件函数
