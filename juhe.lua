@@ -15,6 +15,11 @@ local lastPrintTime = 0
 local lastActionInfo = ""
 local actionBankId = 0
 
+-- 添加自动闪避相关变量
+local lastDodgeTime = 0
+local isDodging = false
+local dodgeCooldown = 1.0  -- 闪避冷却时间（秒）
+
 local ConfigManager = {
     kabutowariShellNum = 7,
     loopAuraLevel = false,
@@ -23,13 +28,21 @@ local ConfigManager = {
     printActionID = true,
     printActionDelay = 0.5,
     showInGameMsg = true,
-    logToConsole = false
+    logToConsole = false,
+    -- 自动闪避配置
+    autoDodge = false,  -- 是否启用自动闪避
+    dodgeCategory = 0,  -- 闪避动作类别，留空供用户填写
+    dodgeIndex = 0,     -- 闪避动作索引，留空供用户填写
+    dodgeDelay = 0.1,   -- 闪避延迟（秒）
+    dodgeNotify = true  -- 是否在闪避时显示通知
 }
 
+-- 获取组件函数
 local function getComponent(obj, type)
     return obj:call("getComponent(System.Type)", sdk.typeof(type))
 end
 
+-- 初始化主角函数
 local function initMaster()
     if not MasterPlayer then
         MasterPlayer = sdk.get_managed_singleton("app.PlayerManager")
@@ -93,9 +106,40 @@ local function printActionInfo(force)
     end
 end
 
+-- 执行闪避动作的函数
+local function performDodge()
+    if not initMaster() then return false end
+    
+    local currentTime = os.clock()
+    if currentTime - lastDodgeTime < dodgeCooldown then return false end
+    
+    -- 创建闪避动作ID
+    local dodgeActionID = NewActionID(ConfigManager.dodgeCategory, ConfigManager.dodgeIndex)
+    
+    -- 执行闪避动作
+    local success = player:get_Character():call("changeActionRequest(app.AppActionDef.LAYER, ace.ACTION_ID, System.Boolean)", 
+        0, dodgeActionID, false)
+    
+    if success then
+        lastDodgeTime = currentTime
+        isDodging = true
+        
+        if ConfigManager.dodgeNotify then
+            re.msg("执行自动闪避！")
+        end
+        
+        return true
+    end
+    
+    return false
+end
+
+-- 模糊匹配函数
 local function fuzzy_match(str, pattern)
     return string.find(str, pattern) ~= nil
 end
+
+-- 排除的动作ID列表
 local excludedMotionIDs = {
     230, 232, 233, 237,
     249, 250, 252, 263, 264, 265,
@@ -104,17 +148,18 @@ local excludedMotionIDs = {
     466, 467
 }
 
+-- 动作ID查找表
 local motionIDLookup = {}
 for _, id in ipairs(excludedMotionIDs) do
     motionIDLookup[id] = true
 end
 
--- 统一检测函数
+-- 检测动作状态函数
 local function checkMotionState()
     return not motionIDLookup[motionID]
 end
 
--- -- 无限红刃
+-- 无限红刃钩子
 sdk.hook(
     sdk.find_type_definition("app.cHunterWp03Handling"):get_method("doUpdate()"),
     function(args)
@@ -134,7 +179,7 @@ sdk.hook(
     end
 )
 
--- -- 纳刀时长
+-- 纳刀时长钩子
 sdk.hook(
     sdk.find_type_definition("app.Wp03Action.cIaiWpOff"):get_method("doUpdate()"),
     function(args)
@@ -148,8 +193,7 @@ sdk.hook(
     end
 )
 
-
--- --创建动作ID
+-- 创建动作ID函数
 local function NewActionID(category, index)
     local instance = ValueType.new(sdk.find_type_definition("ace.ACTION_ID"))
     sdk.set_native_field(instance, sdk.find_type_definition("ace.ACTION_ID"), "_Category", category)
@@ -158,7 +202,7 @@ local function NewActionID(category, index)
     return instance
 end
 
-
+-- 伤害检测钩子
 sdk.hook(
     sdk.find_type_definition("app.Hit"):get_method("callHitReturnEvent(System.Delegate[], app.HitInfo)"),
     function(args)
@@ -168,6 +212,19 @@ sdk.hook(
             local minEm = fuzzy_match(hitinfo:get_field('<AttackOwner>k__BackingField'):get_Name(), "em")
             local gm = fuzzy_match(hitinfo:get_field('<AttackOwner>k__BackingField'):get_Name(), "Gm")
             local heal = fuzzy_match(hitinfo:get_field('<AttackOwner>k__BackingField'):get_Name(), "Heal")
+            
+            -- 检测敌人攻击并尝试自动闪避
+            if ConfigManager.autoDodge and (em == true or gm == true or minEm == true) and heal == false then
+                -- 如果目标是玩家，且闪避动作ID已设置，则执行闪避
+                if hitinfo:get_field("<DamageOwner>k__BackingField"):get_Name() == "MasterPlayer" and
+                   ConfigManager.dodgeCategory > 0 and ConfigManager.dodgeIndex > 0 then
+                    -- 添加一个小延迟后执行闪避
+                    re.on_next_frame(function()
+                        performDodge()
+                    end)
+                end
+            end
+            
             if (em == true or gm == true or minEm == true) and heal == false then
                 if action_index == 23 and motionID == 250 and hitinfo:get_field("<DamageOwner>k__BackingField"):get_Name() == "MasterPlayer" then
                     damage_owner = "MasterPlayer"
@@ -186,6 +243,7 @@ sdk.hook(
     end
 )
 
+-- 动作切换钩子
 sdk.hook(
     sdk.find_type_definition("app.HunterCharacter"):get_method(
         "changeActionRequest(app.AppActionDef.LAYER, ace.ACTION_ID, System.Boolean)"), function(args)
@@ -206,6 +264,7 @@ sdk.hook(
     end
 )
 
+-- 自动闪避钩子
 sdk.hook(
     sdk.find_type_definition("app.Wp03_Export"):get_method(
         "table_6820f751_3c7a_2bdf_415f_6f6842fb3e52(ace.btable.cCommandWork, ace.btable.cOperatorWork)"),
@@ -219,14 +278,19 @@ sdk.hook(
     end
 )
 
--- 添加帧更新钩子以实时监控动作ID
+-- 帧更新钩子
 re.on_frame(function()
     if ConfigManager.printActionID and initMaster() then
         printActionInfo()
     end
+    
+    -- 重置闪避状态
+    if isDodging and os.clock() - lastDodgeTime > 1.0 then
+        isDodging = false
+    end
 end)
 
-
+-- UI绘制函数
 re.on_draw_ui(
     function()
         local changed = false
@@ -262,9 +326,44 @@ re.on_draw_ui(
             
             imgui.tree_pop()
         end
+        
+        -- 添加自动闪避配置节点
+        if imgui.tree_node("自动闪避") then
+            changed, ConfigManager.autoDodge = imgui.checkbox("启用自动闪避", 
+                ConfigManager.autoDodge);
+                
+            if ConfigManager.autoDodge then
+                changed, ConfigManager.dodgeCategory = imgui.drag_int("闪避动作类别", 
+                    ConfigManager.dodgeCategory, 1, 0, 100);
+                changed, ConfigManager.dodgeIndex = imgui.drag_int("闪避动作索引", 
+                    ConfigManager.dodgeIndex, 1, 0, 100);
+                changed, ConfigManager.dodgeDelay = imgui.drag_float("闪避延迟(秒)", 
+                    ConfigManager.dodgeDelay, 0.05, 0.0, 1.0);
+                changed, ConfigManager.dodgeNotify = imgui.checkbox("闪避时显示通知", 
+                    ConfigManager.dodgeNotify);
+                
+                if imgui.button("测试闪避") and ConfigManager.dodgeCategory > 0 and ConfigManager.dodgeIndex > 0 then
+                    performDodge()
+                end
+                
+                -- 显示闪避状态
+                if isDodging then
+                    imgui.text_colored("正在闪避中...", 0.0, 1.0, 0.0, 1.0)
+                elseif os.clock() - lastDodgeTime < dodgeCooldown then
+                    imgui.text_colored(string.format("闪避冷却中 (%.1f秒)", dodgeCooldown - (os.clock() - lastDodgeTime)), 1.0, 0.5, 0.0, 1.0)
+                else
+                    imgui.text_colored("闪避就绪", 0.0, 1.0, 0.0, 1.0)
+                end
+                
+                imgui.text_wrapped("使用方法：\n1. 启用自动闪避\n2. 设置闪避动作类别和索引\n3. 可以通过动作ID监控功能找到合适的闪避动作ID\n4. 使用'测试闪避'按钮测试设置是否有效")
+            end
+            
+            imgui.tree_pop()
+        end
     end
 )
 
+-- 自动闪避钩子
 sdk.hook(
     sdk.find_type_definition("app.Wp03_Export"):get_method(
         "table_b91e20f6_300d_4d56_8a9b_9aa6ed81076b(ace.btable.cCommandWork, ace.btable.cOperatorWork)"),
