@@ -24,7 +24,7 @@ local dodgeCooldown = 1.0 -- 闪避冷却时间（秒）
 local ConfigManager = {
     -- 太刀相关配置
     kabutowariShellNum = 7,  -- 兜割伤害次数
-    loopAuraLevel = false,   -- 是否无限红刃
+    loopAuraLevel = true,   -- 是否无限红刃
     nadaoTime = 3.5,         -- 纳刀时长
     
     -- 动作ID监控配置
