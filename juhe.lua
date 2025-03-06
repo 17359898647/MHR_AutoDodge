@@ -57,17 +57,17 @@ end
 
 -- 运行时数据
 local Runtime = {
-    MasterPlayer = nil,
-    player = nil,
-    weaponType = nil,
-    isWeaponOn = nil,
-    action_index = 0,
-    action_cata = 0,
-    damage_owner = "",
-    motionID = nil,
-    gameObje = nil,
-    auraLevel = 1,
-    Isjianqie = false
+    MasterPlayer = nil,        -- 主角玩家对象，用于获取玩家实例
+    player = nil,              -- 玩家数据对象，包含玩家状态和属性
+    weaponType = nil,          -- 武器类型，用于识别当前装备的武器
+    isWeaponOn = nil,          -- 武器是否已拔出，true表示武器已拔出，false表示武器已收起
+    action_index = 0,          -- 当前动作索引，用于标识具体动作
+    action_cata = 0,           -- 当前动作类别，用于分类不同类型的动作
+    damage_owner = "",         -- 伤害来源，记录造成伤害的实体
+    motionID = nil,            -- 动作ID，用于识别特定的动作动画
+    gameObje = nil,            -- 游戏对象，用于引用当前相关的游戏实体
+    auraLevel = 1,             -- 气场等级，用于太刀特殊状态(如斩气等级)
+    Isjianqie = false          -- 是否处于见切状态，太刀特有的一种反击姿态
 }
 
 -- 获取组件
