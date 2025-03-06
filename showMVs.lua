@@ -1,15 +1,15 @@
-local cfg = {}
+local cfg = {} -- 配置对象，存储显示相关的各种参数设置
 
-if not cfg.rec_margin then cfg.rec_margin = 10 end
-if not cfg.line_space then cfg.line_space = 30 end
+if not cfg.rec_margin then cfg.rec_margin = 10 end -- 矩形边距，单位为像素
+if not cfg.line_space then cfg.line_space = 30 end -- 行间距，单位为像素
 
-if not cfg.general_x then cfg.general_x = 1000 end
-if not cfg.general_y then cfg.general_y = 100 end
-if not cfg.general_cap_width then cfg.general_cap_width = 350 end
-if not cfg.general_width then cfg.general_width = 120 end
+if not cfg.general_x then cfg.general_x = 1000 end -- 显示区域X坐标起始位置
+if not cfg.general_y then cfg.general_y = 100 end -- 显示区域Y坐标起始位置
+if not cfg.general_cap_width then cfg.general_cap_width = 350 end -- 标题区域宽度
+if not cfg.general_width then cfg.general_width = 120 end -- 内容区域宽度
 
-local total_line = 0
-local general_line = 0
+local total_line = 0 -- 总行数计数器
+local general_line = 0 -- 当前行计数器
 -- top left of rectengle
 
 local printGeneralLine = function(cap, value, --[[optional]]value_color)
@@ -32,7 +32,7 @@ local printGeneralLine = function(cap, value, --[[optional]]value_color)
 	general_line = general_line + 1
 end
 
-local PlayMan
+local PlayMan -- 玩家管理器实例（PlayerManager）
 local function getPlayMan()
     if not PlayMan then
         PlayMan = sdk.get_managed_singleton("app.PlayerManager")
@@ -40,7 +40,7 @@ local function getPlayMan()
     return PlayMan
 end
 
-local MasterPlayer --app.cPlayerManageInfo
+local MasterPlayer -- 主玩家信息（app.cPlayerManageInfo）
 local function getMasterPlayer()
     if not MasterPlayer then
         if not getPlayMan() then return nil end
@@ -49,7 +49,7 @@ local function getMasterPlayer()
     return MasterPlayer
 end
 
-local HunterController --app.HunterController
+local HunterController -- 猎人控制器（app.HunterController）
 local function getHunterController()
     if not HunterController then
         if not getMasterPlayer() then return nil end
@@ -58,7 +58,7 @@ local function getHunterController()
     return HunterController
 end
 
-local HunterCharacter --app.HunterCharacter
+local HunterCharacter -- 猎人角色（app.HunterCharacter）
 local function getHunterCharacter()
     if not HunterCharacter then
         if not getMasterPlayer() then return nil end
@@ -67,7 +67,7 @@ local function getHunterCharacter()
     return HunterCharacter
 end
 
-local PlayerObject --MasterPlayerObject
+local PlayerObject -- 主玩家对象（MasterPlayerObject）
 local function getPlayerObject()
     if not PlayerObject then
         if not getMasterPlayer() then return nil end
@@ -76,7 +76,7 @@ local function getPlayerObject()
     return PlayerObject
 end
 
-local HunterHitController
+local HunterHitController -- 猎人受击控制器
 local function getHunterHitController()
     if not HunterHitController then
         if not getHunterCharacter() then return nil end
@@ -85,7 +85,7 @@ local function getHunterHitController()
     return HunterHitController
 end
 
-local HunterMotion
+local HunterMotion -- 猎人动作组件
 local function getHunterMotion()
     if not HunterMotion then
         if not getHunterCharacter() then return nil end
@@ -102,9 +102,9 @@ end
 -- get_CharaParamHolder()
 
 
-local playerLabel1 = "melee base attack"
-local playerLabel2 = "shell base attack"
-local playerLabel3 = "buffed attack"
+local playerLabel1 = "melee base attack" -- 近战基础攻击数据显示文本
+local playerLabel2 = "shell base attack" -- 弹壳基础攻击数据显示文本
+local playerLabel3 = "buffed attack" -- 增益后攻击数据显示文本
 local function drawPlayerLabel(text, color, posOffset)
     if not getPlayerObject() then return end
     local PlayerTransform = PlayerObject:get_Transform()
@@ -118,10 +118,10 @@ local function drawPlayerLabel(text, color, posOffset)
 
 end
 
-local AttackUniqueID = nil
-local CollisionDataID = nil
+local AttackUniqueID = nil -- 攻击唯一ID
+local CollisionDataID = nil -- 碰撞数据ID
 
-local CleanUp = function()
+local CleanUp = function() -- 清理函数，重置所有全局变量
     PlayMan = nil
     MasterPlayer = nil
     HunterController = nil
@@ -135,63 +135,63 @@ re.on_frame(function()
 
     if not getHunterCharacter() then CleanUp() return end
     
-    local IsWeaponOn = HunterCharacter:get_IsWeaponOn()
-    -- local IsWeaponOnAction = HunterCharacter:get_IsWeaponOnAction()
-    -- local IsCombat = HunterCharacter:get_IsCombat()
-    -- local IsCombatBoss = HunterCharacter:get_IsCombatBoss()
-    -- local IsCombatAngryBoss = HunterCharacter:get_IsCombatAngryBoss()
-    -- local IsHalfCombat = HunterCharacter:get_IsHalfCombat()
-    -- local IsCombatCageLight = HunterCharacter:get_IsCombatCageLight()
-    -- local IsInLifeArea = HunterCharacter:get_IsInLifeArea()
-    -- local IsInBaseCamp = HunterCharacter:get_IsInBaseCamp()
-    -- local IsInTent = HunterCharacter:get_IsInTent()
+    local IsWeaponOn = HunterCharacter:get_IsWeaponOn() -- 是否持有武器
+    local IsWeaponOnAction = HunterCharacter:get_IsWeaponOnAction() -- 是否正在执行武器动作
+    local IsCombat = HunterCharacter:get_IsCombat() -- 是否在战斗状态
+    local IsCombatBoss = HunterCharacter:get_IsCombatBoss() -- 是否在与大型怪物战斗
+    local IsCombatAngryBoss = HunterCharacter:get_IsCombatAngryBoss() -- 是否在与愤怒状态的大型怪物战斗
+    local IsHalfCombat = HunterCharacter:get_IsHalfCombat() -- 是否在半战斗状态
+    local IsCombatCageLight = HunterCharacter:get_IsCombatCageLight() -- 是否在笼子光照战斗状态
+    local IsInLifeArea = HunterCharacter:get_IsInLifeArea() -- 是否在生活区域
+    local IsInBaseCamp = HunterCharacter:get_IsInBaseCamp() -- 是否在基地营地
+    local IsInTent = HunterCharacter:get_IsInTent() -- 是否在帐篷中
 
-	-- if IsWeaponOn or (not IsInLifeArea) then
+	if IsWeaponOn or (not IsInLifeArea) then
 
     general_line = 0
 
-    -- draw.filled_rect(cfg.general_x, cfg.general_y, 
-    --     cfg.general_width + cfg.general_cap_width + cfg.rec_margin * 2, 
-    --     total_line * cfg.line_space + cfg.rec_margin * 2,
-    --     0x44000000)
+    draw.filled_rect(cfg.general_x, cfg.general_y, 
+        cfg.general_width + cfg.general_cap_width + cfg.rec_margin * 2, 
+        total_line * cfg.line_space + cfg.rec_margin * 2,
+        0x44000000)
 
     total_line = general_line
 
 
-    -- printGeneralLine("IsWeaponOn", IsWeaponOn)
-    -- printGeneralLine("IsWeaponOnAction", IsWeaponOnAction)
-    -- printGeneralLine("IsCombat", IsCombat)
-    -- printGeneralLine("IsCombatBoss", IsCombatBoss)
-    -- printGeneralLine("IsCombatAngryBoss", IsCombatAngryBoss)
-    -- printGeneralLine("IsHalfCombat", IsHalfCombat)
-    -- printGeneralLine("IsCombatCageLight", IsCombatCageLight)
-    -- printGeneralLine("IsInLifeArea", IsInLifeArea)
-    -- printGeneralLine("IsInBaseCamp", IsInBaseCamp)
-    -- printGeneralLine("IsInTent", IsInTent)
+    printGeneralLine("IsWeaponOn", IsWeaponOn) -- 显示是否持有武器
+    printGeneralLine("IsWeaponOnAction", IsWeaponOnAction) -- 显示是否正在执行武器动作
+    printGeneralLine("IsCombat", IsCombat) -- 显示是否在战斗状态
+    printGeneralLine("IsCombatBoss", IsCombatBoss) -- 显示是否在与大型怪物战斗
+    printGeneralLine("IsCombatAngryBoss", IsCombatAngryBoss) -- 显示是否在与愤怒状态的大型怪物战斗
+    printGeneralLine("IsHalfCombat", IsHalfCombat) -- 显示是否在半战斗状态
+    printGeneralLine("IsCombatCageLight", IsCombatCageLight) -- 显示是否在笼子光照战斗状态
+    printGeneralLine("IsInLifeArea", IsInLifeArea) -- 显示是否在生活区域
+    printGeneralLine("IsInBaseCamp", IsInBaseCamp) -- 显示是否在基地营地
+    printGeneralLine("IsInTent", IsInTent) -- 显示是否在帐篷中
     
-    -- local BaseActionController = HunterCharacter:get_BaseActionController()
-    -- if BaseActionController then
-    --     local CurrentActionID = BaseActionController._CurrentActionID
-    --     if CurrentActionID then
-    --         printGeneralLine("[Base]CurrentActionID", "["..CurrentActionID:get_Category().."]"..CurrentActionID:get_Index())
-    --     end
-    --     local PrevActionID = BaseActionController._PrevActionID
-    --     if PrevActionID then
-    --         printGeneralLine("[Base]PrevActionID", "["..PrevActionID:get_Category().."]"..PrevActionID:get_Index())
-    --     end
-    -- end
+    local BaseActionController = HunterCharacter:get_BaseActionController() -- 获取基础动作控制器
+    if BaseActionController then
+        local CurrentActionID = BaseActionController._CurrentActionID -- 当前动作ID
+        if CurrentActionID then
+            printGeneralLine("[Base]CurrentActionID", "["..CurrentActionID:get_Category().."]"..CurrentActionID:get_Index())
+        end
+        local PrevActionID = BaseActionController._PrevActionID -- 前一个动作ID
+        if PrevActionID then
+            printGeneralLine("[Base]PrevActionID", "["..PrevActionID:get_Category().."]"..PrevActionID:get_Index())
+        end
+    end
 
-    -- local SubActionController = HunterCharacter:get_SubActionController()
-    -- if SubActionController then
-    --     local CurrentActionID = SubActionController._CurrentActionID
-    --     if CurrentActionID then
-    --         printGeneralLine("[Sub]CurrentActionID", "["..CurrentActionID:get_Category().."]"..CurrentActionID:get_Index())
-    --     end
-    --     local PrevActionID = SubActionController._PrevActionID
-    --     if PrevActionID then
-    --         printGeneralLine("[Sub]PrevActionID", "["..PrevActionID:get_Category().."]"..PrevActionID:get_Index())
-    --     end
-    -- end
+    local SubActionController = HunterCharacter:get_SubActionController() -- 获取子动作控制器
+    if SubActionController then
+        local CurrentActionID = SubActionController._CurrentActionID -- 当前子动作ID
+        if CurrentActionID then
+            printGeneralLine("[Sub]CurrentActionID", "["..CurrentActionID:get_Category().."]"..CurrentActionID:get_Index())
+        end
+        local PrevActionID = SubActionController._PrevActionID -- 前一个子动作ID
+        if PrevActionID then
+            printGeneralLine("[Sub]PrevActionID", "["..PrevActionID:get_Category().."]"..PrevActionID:get_Index())
+        end
+    end
 
     
     if getPlayerObject() then
@@ -201,12 +201,12 @@ re.on_frame(function()
     end
 
     if IsWeaponOn then
-        -- printGeneralLine("AttackUniqueID", AttackUniqueID)
-        -- printGeneralLine("CollisionDataID", CollisionDataID)
+        printGeneralLine("AttackUniqueID", AttackUniqueID) -- 显示攻击唯一ID
+        printGeneralLine("CollisionDataID", CollisionDataID) -- 显示碰撞数据ID
     end
 
     total_line = general_line
-	-- end
+	end
 
 end)
 
@@ -214,17 +214,17 @@ end)
 sdk.hook(
     sdk.find_type_definition("app.Weapon"):get_method("evAttackCollisionActive(app.col_user_data.AttackParam)"),
     function(args)
-        local AttackParam = sdk.to_managed_object(args[3])
+        local AttackParam = sdk.to_managed_object(args[3]) -- 攻击参数对象
         if not AttackParam then return end
-        -- local cRuntimeData = sdk.to_managed_object(AttackParam._RuntimeData)
-        -- if not cRuntimeData then return end
-        -- AttackUniqueID = cRuntimeData._AttackUniqueID
-        -- CollisionDataID = cRuntimeData._CollisionDataID._Index
+        local cRuntimeData = sdk.to_managed_object(AttackParam._RuntimeData) -- 获取运行时数据
+        if not cRuntimeData then return end
+        AttackUniqueID = cRuntimeData._AttackUniqueID -- 设置攻击唯一ID
+        CollisionDataID = cRuntimeData._CollisionDataID._Index -- 设置碰撞数据ID
         
-        local Attack = AttackParam:get_Attack()
-        local TotalAttack = AttackParam:get_TotalAttack()
-        local StatusAttrRate = AttackParam:get_StatusAttrRate()
-        local StatusConditionRate = AttackParam:get_StatusConditionRate()
+        local Attack = AttackParam:get_Attack() -- 攻击力值
+        local TotalAttack = AttackParam:get_TotalAttack() -- 总攻击力值
+        local StatusAttrRate = AttackParam:get_StatusAttrRate() -- 状态属性率
+        local StatusConditionRate = AttackParam:get_StatusConditionRate() -- 状态条件率
 
         playerLabel1 = "melee  [ "..Attack.." | "..TotalAttack.." ] "..StatusAttrRate.." / "..StatusConditionRate
     end,
@@ -238,16 +238,16 @@ sdk.hook(
     sdk.find_type_definition("app.mcShellColHit"):get_method(
         "evAttackPreProcess(app.HitInfo)"),
     function(args)
-        local HitInfo = sdk.to_managed_object(args[3])
+        local HitInfo = sdk.to_managed_object(args[3]) -- 命中信息对象
         if not HitInfo then return end
         if not (HitInfo:getActualAttackOwner():ToString() == getPlayerObject():ToString()) then return end
 
-        local AttackParam = HitInfo:get_field("<AttackData>k__BackingField")
+        local AttackParam = HitInfo:get_field("<AttackData>k__BackingField") -- 攻击数据
         if not AttackParam then return end
 
-        local Attack = AttackParam:get_field("_Attack")
-        local StatusAttrRate = AttackParam:get_field("_StatusAttrRate")
-        local StatusConditionRate = AttackParam:get_field("_StatusConditionRate")
+        local Attack = AttackParam:get_field("_Attack") -- 攻击力值
+        local StatusAttrRate = AttackParam:get_field("_StatusAttrRate") -- 状态属性率
+        local StatusConditionRate = AttackParam:get_field("_StatusConditionRate") -- 状态条件率
 
         playerLabel2 = "shell  [ "..Attack.." | ".." ] "..StatusAttrRate.." / "..StatusConditionRate
     end,
@@ -260,16 +260,16 @@ sdk.hook(
 sdk.hook(
     sdk.find_type_definition("app.HunterCharacter"):get_method("evHit_AttackPostProcess(app.HitInfo)"),
     function(args)
-        local HitInfo = sdk.to_managed_object(args[3])
+        local HitInfo = sdk.to_managed_object(args[3]) -- 命中信息对象
         if not HitInfo then return end
         if not (HitInfo:getActualAttackOwner():ToString() == getPlayerObject():ToString()) then return end
 
-        local AttackParam = HitInfo:get_field("<AttackData>k__BackingField")
+        local AttackParam = HitInfo:get_field("<AttackData>k__BackingField") -- 攻击数据
         if not AttackParam then return end
 
-        local Attack = AttackParam:get_field("_Attack")
-        local StatusAttrRate = AttackParam:get_field("_StatusAttrRate")
-        local StatusConditionRate = AttackParam:get_field("_StatusConditionRate")
+        local Attack = AttackParam:get_field("_Attack") -- 攻击力值
+        local StatusAttrRate = AttackParam:get_field("_StatusAttrRate") -- 状态属性率
+        local StatusConditionRate = AttackParam:get_field("_StatusConditionRate") -- 状态条件率
 
         playerLabel3 = "buffed [ "..Attack.." | ".." ] "..StatusAttrRate.." / "..StatusConditionRate
     end,
