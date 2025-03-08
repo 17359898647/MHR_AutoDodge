@@ -135,7 +135,11 @@ config[CONST.WeaponType.DualBlades] = {
   lasterDodgeTime = 0,
   CD = 0.5,
   excludedActionIndices = {
-    312, 313, 314,320 --- 320是没气的乱舞1, 312,313,314 以此乱舞1,2,3
+    312, 313, 314,320, --- 320是没气的乱舞1, 312,313,314 以此乱舞1,2,3
+    81,82, --- 前躲和蓝前躲id
+    84,89, --- 后躲和蓝后躲id
+    82,87, --- 左躲和蓝左躲id
+    83,88, --- 右躲和蓝右躲id
   },  -- 排除动作id
   checkMotionState = function()
     return checkMotionState(config[CONST.WeaponType.DualBlades], CONST.WeaponType.DualBlades)
@@ -157,7 +161,12 @@ config[CONST.WeaponType.Bow] = {
   lasterDodgeTime = 0,
   CD = 0.5,
   excludedActionIndices = {
-    -- 19, 20, 21, 22
+    274,76, -- 前躲和蓝前躲id
+    276,275, -- 后躲和蓝后躲id
+    275,74, -- 左躲和蓝左躲id
+    278,77, -- 右躲和蓝右躲id
+    60,61,62,63, -- 好像是翻滚id
+    260,261,263,287, -- 几个蓄力状态的id
   },  -- 排除动作id
   checkMotionState = function()
     return checkMotionState(config[CONST.WeaponType.Bow], CONST.WeaponType.Bow)
