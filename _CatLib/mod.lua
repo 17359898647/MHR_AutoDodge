@@ -106,6 +106,11 @@ function _M.NewMod(modName, configFileName)
         end
     end
 
+    ---@param size number nil as disable
+    function Mod.DisableDefaultOptions()
+        Mod.DefaultOptions = false
+    end
+
     function Mod.SaveConfig(filename, config)
         if not filename then
             filename = Mod.ConfigFileName
@@ -162,11 +167,19 @@ function _M.NewMod(modName, configFileName)
             end
     
             local changed
-            changed, Mod.Config.Enabled = imgui.checkbox("Enabled", Mod.Config.Enabled)
-            configChanged = configChanged or changed
 
-            changed, Mod.Config.Debug = imgui.checkbox("Debug", Mod.Config.Debug)
-            configChanged = configChanged or changed
+            if Mod.DefaultOptions ~= false then
+                changed, Mod.Config.Enabled = imgui.checkbox("Enabled", Mod.Config.Enabled)
+                configChanged = configChanged or changed
+    
+                changed, Mod.Config.Debug = imgui.checkbox("Debug", Mod.Config.Debug)
+                configChanged = configChanged or changed
+            end
+
+            if Mod.DefaultOptions == false and Mod.HasVerbose then
+                changed, Mod.Config.Debug = imgui.checkbox("Debug", Mod.Config.Debug)
+                configChanged = configChanged or changed
+            end
 
             if Mod.HasVerbose then
                 changed, Mod.Config.Verbose = imgui.checkbox("Verbose Log", Mod.Config.Verbose)
@@ -415,20 +428,25 @@ function _M.NewMod(modName, configFileName)
     ---@param method string
     ---@param preFunc HookPreFunc
     ---@param postFunc HookPostFunc|nil
-    function Mod.HookFunc(typename, method, preFunc, postFunc)
-        -- log.info(tostring(typename) .. ":" .. tostring(method) .. " hooking")
-        if typename == nil or method == nil then return end
+    function Mod.HookFunc(typename, methodName, preFunc, postFunc)
+        Mod.info(tostring(typename) .. ":" .. tostring(methodName) .. " hooking")
+        if typename == nil or methodName == nil then return end
         if preFunc == nil and postFunc == nil then return end
         if preFunc == nil then preFunc = HOOK_PRE_DEFAULT end
         if postFunc == nil then postFunc = HOOK_POST_DEFAULT end
 
         local type = sdk.find_type_definition(typename)
         if type == nil then
-            Mod.error("unknown type hook: " .. tostring(typename) .. ":" .. tostring(method))
+            Mod.error("unknown type: " .. tostring(typename) .. ":" .. tostring(methodName))
+            return
+        end
+        local method = type:get_method(methodName)
+        if method == nil then
+            Mod.error("unknown type method: " .. tostring(typename) .. ":" .. tostring(methodName))
             return
         end
         sdk.hook(
-            type:get_method(method),
+            method,
             function (args)
                 if not Mod.Config.Enabled then return end
                 return preFunc(args)
@@ -439,7 +457,7 @@ function _M.NewMod(modName, configFileName)
                 return ret
             end
         )
-        -- log.info(type .. ":" .. method .. " hooked.")
+        Mod.info(typename .. ":" .. methodName .. " hooked.")
     end
 
     function Mod.DisabledHookFunc(type, method, preFunc, postFunc) end

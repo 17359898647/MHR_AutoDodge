@@ -37,8 +37,13 @@ function _M.GetLanguage()
 end
 
 ---@return boolean
-function _M.IsChinese()
-    local lang = _M.GetLanguage()
+function _M.IsChinese(lang)
+    if LibConf.LanguageOverride then
+        return LibConf.Language == CONST.LanguageType.SimplifiedChinese or LibConf.Language == CONST.LanguageType.TraditionalChinese
+    end
+    if lang == nil then
+        lang = _M.GetLanguage()
+    end
     return lang == CONST.LanguageType.SimplifiedChinese or lang == CONST.LanguageType.TraditionalChinese
 end
 

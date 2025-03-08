@@ -165,8 +165,13 @@ end
 local GetItemNameFunc = sdk.find_type_definition("app.ItemDef"):get_method("RawName(app.ItemDef.ID)")
 ---@param id app.ItemDef.ID
 ---@return string
-function _M.GetItemName(id)
+function _M.GetItemName(id, lang)
     if not id or id < 0 then return "<INVALID_ITEM_ID>" end
+
+    if lang then
+        local guid = GetItemNameFunc:call(nil, id)
+        return _M.GetLocalizedText(guid, lang)
+    end
 
     local name = _M.ITEM_NAMES[id]
     if name == nil then
