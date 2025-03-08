@@ -77,6 +77,7 @@ local WEAPON_TYPE_NAMES = {
 ---@field checkMotionState function 检查动作状态
 ---@field isEquipped function 检查是否装备武器
 ---@field dogeFun function 执行躲避功能
+---@field excludedActionMap table<number, boolean> 懒加载哈希表
 local config={}
 -- 统一的isEquipped函数，接受武器配置和武器类型作为参数
 local function createIsEquipped(weaponConfig, weaponType)
@@ -111,16 +112,26 @@ local function createDogeFun(weaponConfig, weaponType)
   end
 end
 
--- 统一的排除动作函数，接受武器配置和武器类型作为参数
+-- 优化的动作状态检查函数，使用懒加载哈希表
 local function checkMotionState(weaponConfig, weaponType)
   if not initMaster() then
     return false
   end
-  for _, index in ipairs(weaponConfig.excludedActionIndices) do
-    if motionID == index then
-      return false
+  
+  -- 懒加载：如果还没有创建哈希表，则创建一个
+  if not weaponConfig.excludedActionMap then
+    -- 创建一个哈希表用于O(1)查找
+    weaponConfig.excludedActionMap = {}
+    for _, id in ipairs(weaponConfig.excludedActionIndices) do
+      weaponConfig.excludedActionMap[id] = true
     end
   end
+  
+  -- 直接用哈希表查找，O(1)时间复杂度
+  if weaponConfig.excludedActionMap[motionID] then
+    return false
+  end
+  
   return true
 end
 
