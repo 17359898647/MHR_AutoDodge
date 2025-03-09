@@ -1,6 +1,8 @@
 local Core = require("_CatLib")
 local CONST = require("_CatLib.const")
 local mod = Core.NewMod("Auto DualBlades Dodge")
+local _player = require("_CatLib.game.player")
+local _singleton = require("_CatLib.game.singletons")
 mod.EnableCJKFont(18) -- 启用中文字体
 
 -- 基础变量
@@ -11,28 +13,28 @@ local action_index = 0
 local action_cata = 0
 local damage_owner = ""
 local isWeaponOn = false
-local motionID          -- 动作ID
+local motionID         -- 动作ID
 local masterInitialized = false -- 主玩家是否已初始化
 local CurrentWeaponType
 local CurrentWeaponTypeName = ""
 
 local function initMaster()
   if not MasterPlayer then
-    MasterPlayer = sdk.get_managed_singleton("app.PlayerManager")
+    MasterPlayer = _singleton.GetPlayerManager()
   end
   if not MasterPlayer then return false end
 
   if not player then
-    player = MasterPlayer:getMasterPlayer()
+    player = _player.GetInfo()
   end
   if not player then return false end
 
   if not gameObje then
-    gameObje = player:get_Object()
+    gameObje = _player.GetGameObject()
   end
   if not gameObje then return false end
 
-  motionID = gameObje:call("getComponent(System.Type)", sdk.typeof('via.motion.Motion')):getLayer(0):get_MotionID()
+  motionID = Core.GetPlayerMotionData().MotionID
   masterInitialized = true
   return true
 end
@@ -100,7 +102,6 @@ local function createActionFun(weaponConfig, weaponType, category, index)
   
   category = category or 2 -- 默认类别为2
   index = index or weaponConfig.ActionIndex -- 默认索引为配置中的ActionIndex
-  
   if damage_owner == "MasterPlayer" and weaponConfig.isEquipped() then
     local actionID = NewActionID(category, index)
     if player:get_Character():call(
@@ -111,6 +112,7 @@ local function createActionFun(weaponConfig, weaponType, category, index)
     ) then
       weaponConfig.lasterDodgeTime = os.clock()
       damage_owner = ""
+      log.debug('success')
     end
   end
 end
@@ -294,11 +296,13 @@ mod.HookFunc("app.Hit", "callHitReturnEvent(System.Delegate[], app.HitInfo)",
       end
 
       local hitinfo = sdk.to_managed_object(args[3])
-      local em = fuzzy_match(hitinfo:get_field('<AttackOwner>k__BackingField'):get_Name(), "Em")
-      local minEm = fuzzy_match(hitinfo:get_field('<AttackOwner>k__BackingField'):get_Name(), "em")
-      local gm = fuzzy_match(hitinfo:get_field('<AttackOwner>k__BackingField'):get_Name(), "Gm")
-      local heal = fuzzy_match(hitinfo:get_field('<AttackOwner>k__BackingField'):get_Name(), "Heal")
-      local isMasterPlayer = hitinfo:get_field("<DamageOwner>k__BackingField"):get_Name() == "MasterPlayer"
+      local k__BackingField = hitinfo:get_field('<AttackOwner>k__BackingField'):get_Name()
+      local player = hitinfo:get_field("<DamageOwner>k__BackingField"):get_Name()
+      local em = fuzzy_match(k__BackingField, "Em")
+      local minEm = fuzzy_match(k__BackingField, "em")
+      local gm = fuzzy_match(k__BackingField, "Gm")
+      local heal = fuzzy_match(k__BackingField, "Heal")
+      local isMasterPlayer = player == "MasterPlayer"
 
       local isEquipped = false
       if CurrentWeaponType and config[CurrentWeaponType] and type(config[CurrentWeaponType].isEquipped) == "function" then
@@ -311,7 +315,7 @@ mod.HookFunc("app.Hit", "callHitReturnEvent(System.Delegate[], app.HitInfo)",
         return sdk.PreHookResult.SKIP_ORIGINAL
       else
         damage_owner = ""
-      end 
+      end
     end
 )
 
@@ -492,8 +496,8 @@ mod.Menu(function ()
     if CurrentWeaponType and config[CurrentWeaponType] and type(config[CurrentWeaponType].isEquipped) == "function" then
 
       isEquipped = config[CurrentWeaponType].isEquipped()
-      -- 是否会躲避
-      imgui.text("是否会操作: " .. tostring(isEquipped))
+      -- 是否会自动
+      imgui.text("是否会自动: " .. tostring(isEquipped))
     end
     -- 伤害来源
     imgui.separator()
@@ -519,6 +523,8 @@ mod.HookFunc(
     end
   end
 )
+
+-- app.cEnemyLoopEffectHighlight
 
 
 mod.HookFunc(

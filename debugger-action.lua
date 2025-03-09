@@ -1,5 +1,7 @@
 local Core = require("_CatLib")
 local CONST = require("_CatLib.const")
+local _player = require("_CatLib.game.player")
+local _singleton = require("_CatLib.game.singletons")
 local mod = Core.NewMod("Debugger-Action")
 mod.EnableCJKFont(18) -- 启用中文字体
 
@@ -7,15 +9,16 @@ mod.EnableCJKFont(18) -- 启用中文字体
 local MasterPlayer      -- 主玩家对象引用
 local player
 local gameObje
-local action_index  -- 动作索引
-local action_cata   -- 动作类别
-local motionID      -- 动作ID
+local action_index = 0  -- 动作索引，初始化为0
+local action_cata = 0   -- 动作类别，初始化为0
+local motionID = 0      -- 动作ID，初始化为0
 local CustomIndex = 0
 local CustomCategory = 2
 -- 动作历史记录变量
 local actionHistory = {}
 local maxHistoryEntries = 10
 local NewActionID = Core.NewActionID
+local masterInitialized = false
 
 -- 获取游戏对象组件
 local function getComponent(obj, type)
@@ -24,21 +27,24 @@ end
 
 local function initMaster()
   if not MasterPlayer then
-    MasterPlayer = sdk.get_managed_singleton("app.PlayerManager")
+    MasterPlayer = _singleton.GetPlayerManager()
   end
   if not MasterPlayer then return false end
 
   if not player then
-    player = MasterPlayer:getMasterPlayer()
+    player = _player.GetInfo()
   end
   if not player then return false end
 
   if not gameObje then
-    gameObje = player:get_Object()
+    gameObje = _player.GetGameObject()
   end
   if not gameObje then return false end
 
-  motionID = getComponent(gameObje, 'via.motion.Motion'):getLayer(0):get_MotionID()
+  local motionData = Core.GetPlayerMotionData()
+  if motionData and motionData.MotionID then
+    motionID = motionData.MotionID
+  end
   masterInitialized = true
   return true
 end
@@ -50,23 +56,36 @@ mod.HookFunc("app.HunterCharacter", "changeActionRequest(app.AppActionDef.LAYER,
       local type = sdk.find_type_definition("ace.ACTION_ID")
       local newCategory = sdk.get_native_field(args[4], type, "_Category")
       local newIndex = sdk.get_native_field(args[4], type, "_Index")
-      
-      -- 保存旧值用于比较
-      local oldCategory = action_cata
-      local oldIndex = action_index
-      
       -- 更新当前值
-      action_cata = newCategory
-      action_index = newIndex
+      action_cata = newCategory or 0
+      action_index = newIndex or 0
+    end
+  end
+)
 
-      -- 当类别或索引变化时记录到历史
-      if newCategory ~= oldCategory or newIndex ~= oldIndex then
-        -- 直接将动作记录到历史，但暂时不设置motionID字段
+-- 添加帧任务处理器
+mod.OnFrame(
+  function ()
+    if not initMaster() then return end
+    
+    -- 更新当前motionID
+    local motionData = Core.GetPlayerMotionData()
+    if motionData and motionData.MotionID then
+      local currentMotionID = motionData.MotionID
+      
+      -- 检查motionID是否与历史记录中最新一条不同
+      local shouldRecord = false
+      if #actionHistory == 0 or actionHistory[1].motionID ~= currentMotionID then
+        shouldRecord = true
+        motionID = currentMotionID -- 更新全局motionID
+      end
+      
+      if shouldRecord then
         local entry = {
             timestamp = os.clock(),
-            category = newCategory,
-            index = newIndex,
-            motionID = nil -- 先设为nil，稍后更新
+            category = action_cata or 0,
+            index = action_index or 0,
+            motionID = currentMotionID
         }
         
         -- 插入到历史记录的开头
@@ -75,53 +94,6 @@ mod.HookFunc("app.HunterCharacter", "changeActionRequest(app.AppActionDef.LAYER,
         -- 如果超过最大记录数，删除最老的记录
         if #actionHistory > maxHistoryEntries then
             table.remove(actionHistory, #actionHistory)
-        end
-        
-        -- 创建延迟任务，在几帧后获取更新后的motionID
-        local waitFrames = 3 -- 等待3帧再获取motionID
-        local frameCount = 0
-        
-        local updateMotionIDTask = function()
-          frameCount = frameCount + 1
-          if frameCount >= waitFrames then
-            if gameObje then
-              local motion = getComponent(gameObje, 'via.motion.Motion')
-              if motion then
-                local layer = motion:getLayer(0)
-                if layer then
-                  -- 更新刚添加的历史记录的motionID
-                  entry.motionID = layer:get_MotionID()
-                end
-              end
-            end
-            return true -- 任务完成，不再继续执行
-          end
-          return false -- 任务未完成，继续执行
-        end
-        
-        -- 添加到帧更新任务列表
-        if not mod.frameTasks then mod.frameTasks = {} end
-        table.insert(mod.frameTasks, updateMotionIDTask)
-      end
-    end
-  end
-)
-
--- 添加帧任务处理器
-mod.OnFrame(
-  function ()
-    initMaster()
-    
-    -- 处理延迟任务
-    if mod.frameTasks then
-      local i = 1
-      while i <= #mod.frameTasks do
-        local task = mod.frameTasks[i]
-        local completed = task()
-        if completed then
-          table.remove(mod.frameTasks, i)
-        else
-          i = i + 1
         end
       end
     end
@@ -146,15 +118,17 @@ mod.Menu(function ()
 
       if imgui.button("执行自定义动作 [索引: " .. CustomIndex .. "]") then
         local actionID = NewActionID(CustomCategory, CustomIndex)
-      player:get_Character():call("changeActionRequest(app.AppActionDef.LAYER, ace.ACTION_ID, System.Boolean)", 0, actionID, false)
+        if player and player:get_Character() then
+          player:get_Character():call("changeActionRequest(app.AppActionDef.LAYER, ace.ACTION_ID, System.Boolean)", 0, actionID, false)
+        end
       end
       
       imgui.tree_pop()
     end
     imgui.separator()
-    imgui.text("当前动作索引: " .. tostring(action_index))
-    imgui.text("当前动作类别: " .. tostring(action_cata))
-    imgui.text("当前动作ID: " .. tostring(motionID))
+    imgui.text("当前动作类别: " .. tostring(action_cata or 0))
+    imgui.text("当前动作索引: " .. tostring(action_index or 0))
+    imgui.text("当前动作ID: " .. tostring(motionID or 0))
     imgui.separator()
     -- 显示动作历史记录
     if imgui.tree_node("最近动作历史记录") then
@@ -162,10 +136,10 @@ mod.Menu(function ()
       
       for i, entry in ipairs(actionHistory) do
         local timeAgo = os.clock() - entry.timestamp
-        local motionIDText = entry.motionID and tostring(entry.motionID) or "等待中..."
+        local motionIDText = entry.motionID and tostring(entry.motionID) or "未知"
         imgui.text(string.format("[%.2f秒前] 类别: %d, 索引: %d, 动作ID: %s", 
-            timeAgo, entry.category, entry.index, motionIDText))
-    end
+            timeAgo, entry.category or 0, entry.index or 0, motionIDText))
+      end
       
       imgui.tree_pop()
     end
