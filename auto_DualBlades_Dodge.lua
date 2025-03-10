@@ -329,7 +329,6 @@ mod.HookFunc("app.HunterCharacter", "evHit_Damage(app.HitInfo)",
       if CurrentWeaponType == CONST.WeaponType.GreatSword then
         return retval
       end
-
       if config[CurrentWeaponType] and
         type(config[CurrentWeaponType].ActionFun) == "function"
       then
@@ -357,13 +356,13 @@ mod.HookFunc("app.HitController", "checkAngleLimit(app.HitInfo)",
     type(config[CurrentWeaponType].ActionFun) == "function" and
     result
     then
-    config[CurrentWeaponType].ActionFun()
-    action = true
+      config[CurrentWeaponType].ActionFun()
+      action = true
     end
   end,
   function(retval)
     if action then
-      noHitTimer(0.1)
+      noHitTimer(1)
       action = false
       return sdk.to_ptr(false)
     end
