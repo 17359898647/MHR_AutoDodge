@@ -213,7 +213,7 @@ config[CONST.WeaponType.GreatSword] = {
   lasterDodgeTime = 0,
   CD = 0.5,
   excludedActionIndices = {
-    213,237,248,476 -- 都是蓄力斩的斩击id
+    213,237,248,476,474,18,19 -- 都是蓄力斩的斩击id
   },  -- 排除动作id
   checkMotionState = function()
     return checkMotionState(config[CONST.WeaponType.GreatSword], CONST.WeaponType.GreatSword)
@@ -268,13 +268,14 @@ function getCurrentWeaponType()
   if not player then return end
   
   -- 使用参考代码中的方法获取武器类型
+  -- app.HunterCharacter
   local character = player:call("get_Character")
   if not character then return end
-  
+  -- app.Weapon
   local weapon = character:call("get_Weapon")
   if not weapon then return end
   
-  -- 获取武器类型
+  -- app.WeaponDef.TYPE
   local wpType = weapon:get_field("_WpType")
   if wpType ~= nil then
       CurrentWeaponType = wpType
@@ -282,6 +283,25 @@ function getCurrentWeaponType()
       isWeaponOn = character:call("get_IsWeaponOn")
   end
 end
+
+
+local function checkIsMaster(hitinfo)
+  local k__BackingField = hitinfo:get_field('<AttackOwner>k__BackingField'):get_Name()
+  local player = hitinfo:get_field("<DamageOwner>k__BackingField"):get_Name()
+  local em = fuzzy_match(k__BackingField, "Em")
+  local minEm = fuzzy_match(k__BackingField, "em")
+  local gm = fuzzy_match(k__BackingField, "Gm")
+  local heal = fuzzy_match(k__BackingField, "Heal")
+  local isMasterPlayer = player == "MasterPlayer"
+  local isEquipped = false
+  if CurrentWeaponType and config[CurrentWeaponType] and type(config[CurrentWeaponType].isEquipped) == "function" then
+    isEquipped = config[CurrentWeaponType].isEquipped()
+  end
+  damage_owner = hitinfo:get_field("<DamageOwner>k__BackingField"):get_Name()
+  return (em == true or gm == true or minEm == true) and heal == false and isEquipped and isMasterPlayer
+end
+
+ 
 
 -- 攻击检测钩子
 mod.HookFunc("app.Hit", "callHitReturnEvent(System.Delegate[], app.HitInfo)",
@@ -296,21 +316,10 @@ mod.HookFunc("app.Hit", "callHitReturnEvent(System.Delegate[], app.HitInfo)",
       end
 
       local hitinfo = sdk.to_managed_object(args[3])
-      local k__BackingField = hitinfo:get_field('<AttackOwner>k__BackingField'):get_Name()
-      local player = hitinfo:get_field("<DamageOwner>k__BackingField"):get_Name()
-      local em = fuzzy_match(k__BackingField, "Em")
-      local minEm = fuzzy_match(k__BackingField, "em")
-      local gm = fuzzy_match(k__BackingField, "Gm")
-      local heal = fuzzy_match(k__BackingField, "Heal")
-      local isMasterPlayer = player == "MasterPlayer"
-
-      local isEquipped = false
-      if CurrentWeaponType and config[CurrentWeaponType] and type(config[CurrentWeaponType].isEquipped) == "function" then
-        isEquipped = config[CurrentWeaponType].isEquipped()
-      end
+      local result = checkIsMaster(hitinfo)
 
       damage_owner = hitinfo:get_field("<DamageOwner>k__BackingField"):get_Name()
-      if (em == true or gm == true or minEm == true) and heal == false and isEquipped and isMasterPlayer then
+      if result then
         damage_owner = "MasterPlayer"
         return sdk.PreHookResult.SKIP_ORIGINAL
       else
@@ -523,8 +532,6 @@ mod.HookFunc(
     end
   end
 )
-
--- app.cEnemyLoopEffectHighlight
 
 
 mod.HookFunc(
