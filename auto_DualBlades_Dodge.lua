@@ -201,7 +201,7 @@ local isCharging = false --- config中配置不能实时监听,不清楚原因
 -- 大剑躲避配置
 config[CONST.WeaponType.GreatSword] = {
   -- 格挡索引
-  guard = 146,
+  guard = 141,
   -- 是否格挡
   needGuard = true,
   -- 肩撞索引
@@ -304,7 +304,7 @@ end
  
 
 -- 攻击检测钩子
-mod.HookFunc("app.Hit", "callHitReturnEvent(System.Delegate[], app.HitInfo)",
+mod.HookFunc("app.HunterCharacter", "evHit_Damage(app.HitInfo)",
     function(args)
       if not masterInitialized then
         initMaster()
@@ -321,10 +321,19 @@ mod.HookFunc("app.Hit", "callHitReturnEvent(System.Delegate[], app.HitInfo)",
       damage_owner = hitinfo:get_field("<DamageOwner>k__BackingField"):get_Name()
       if result then
         damage_owner = "MasterPlayer"
-        return sdk.PreHookResult.SKIP_ORIGINAL
+        -- 如果不是大剑，return SKIP_ORIGINAL
+        if CurrentWeaponType ~= CONST.WeaponType.GreatSword then
+          return sdk.PreHookResult.SKIP_ORIGINAL
+        end
       else
         damage_owner = ""
       end
+    end,
+    function (retval)
+      if config[CurrentWeaponType] and type(config[CurrentWeaponType].ActionFun) == "function" then
+        config[CurrentWeaponType].ActionFun()
+      end
+      return retval
     end
 )
 
@@ -521,29 +530,6 @@ end)
 
 mod.Run()
 
-
-
-mod.HookFunc(
-  "app.Wp02_Export",
-  "table_60dfb982_a642_4d77_9469_bb85f9cb2cf8(ace.btable.cCommandWork, ace.btable.cOperatorWork)",
-  function(args)
-    if config[CONST.WeaponType.DualBlades] and type(config[CONST.WeaponType.DualBlades].ActionFun) == "function" then
-      config[CONST.WeaponType.DualBlades].ActionFun()
-    end
-  end
-)
-
-
-mod.HookFunc(
-  "app.Wp11_Export",
-  "table_99846ae5_a439_4665_b14e_8b37f6562cf5(ace.btable.cCommandWork, ace.btable.cOperatorWork)",
-  function(args)
-    if config[CONST.WeaponType.Bow] and type(config[CONST.WeaponType.Bow].ActionFun) == "function" then
-      config[CONST.WeaponType.Bow].ActionFun()
-    end
-  end
-)
-
 -- Hook大剑蓄力开始函数
 mod.HookFunc(
   "app.Wp00Action.cChargeBase",
@@ -563,15 +549,5 @@ mod.HookFunc(
     config[CONST.WeaponType.DualBlades].isCharging = false
     isCharging = false
     return sdk.PreHookResult.CALL_ORIGINAL
-  end
-)
-
-mod.HookFunc(
-  "app.Wp00_Export",
-  "updateTable(ace.btable.cCommandWork, ace.btable.cOperatorWork)",
-  function(args)
-    if config[CONST.WeaponType.GreatSword] and type(config[CONST.WeaponType.GreatSword].ActionFun) == "function" then
-      config[CONST.WeaponType.GreatSword].ActionFun()
-    end
   end
 )
