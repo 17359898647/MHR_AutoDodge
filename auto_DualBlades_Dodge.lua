@@ -209,7 +209,7 @@ config[CONST.WeaponType.GreatSword] = {
   -- 是否肩撞
   needShoulder = true,
   isCharging = false,
-  ActionIndex = 146, -- 选择动作索引，默认为格挡
+  ActionIndex = 141, -- 选择动作索引，默认为格挡
   lasterDodgeTime = 0,
   CD = 0.5,
   excludedActionIndices = {
@@ -306,6 +306,9 @@ end
 -- 攻击检测钩子
 mod.HookFunc("app.HunterCharacter", "evHit_Damage(app.HitInfo)",
     function(args)
+      if CurrentWeaponType == CONST.WeaponType.GreatSword then
+        return
+      end
       if not masterInitialized then
         initMaster()
         return
@@ -314,28 +317,60 @@ mod.HookFunc("app.HunterCharacter", "evHit_Damage(app.HitInfo)",
       if not isWeaponOn then
         return
       end
-
       local hitinfo = sdk.to_managed_object(args[3])
       local result = checkIsMaster(hitinfo)
-
-      damage_owner = hitinfo:get_field("<DamageOwner>k__BackingField"):get_Name()
       if result then
-        damage_owner = "MasterPlayer"
-        -- 如果不是大剑，return SKIP_ORIGINAL
-        if CurrentWeaponType ~= CONST.WeaponType.GreatSword then
-          return sdk.PreHookResult.SKIP_ORIGINAL
-        end
+        return sdk.PreHookResult.SKIP_ORIGINAL
       else
         damage_owner = ""
       end
     end,
     function (retval)
-      if config[CurrentWeaponType] and type(config[CurrentWeaponType].ActionFun) == "function" then
+      if CurrentWeaponType == CONST.WeaponType.GreatSword then
+        return retval
+      end
+
+      if config[CurrentWeaponType] and
+        type(config[CurrentWeaponType].ActionFun) == "function"
+      then
         config[CurrentWeaponType].ActionFun()
       end
       return retval
     end
 )
+
+local action = false
+
+local function noHitTimer(time)
+  player:get_Character():startNoHitTimer(time)
+end
+
+mod.HookFunc("app.HitController", "checkAngleLimit(app.HitInfo)", 
+  function(args)
+  if CurrentWeaponType ~= CONST.WeaponType.GreatSword then
+    return
+  end
+  local hitInfo = sdk.to_managed_object(args[3])
+  local result = checkIsMaster(hitInfo)
+  
+    if config[CurrentWeaponType] and
+    type(config[CurrentWeaponType].ActionFun) == "function" and
+    result
+    then
+    config[CurrentWeaponType].ActionFun()
+    action = true
+    end
+  end,
+  function(retval)
+    if action then
+      noHitTimer(0.1)
+      action = false
+      return sdk.to_ptr(false)
+    end
+    return retval
+  end
+)
+
 
 mod.OnFrame(
   function ()
