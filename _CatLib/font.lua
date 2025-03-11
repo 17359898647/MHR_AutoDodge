@@ -95,10 +95,24 @@ end
 
 local CJKFontTable = {}
 
+local DEFAULT_FONT_SIZE = 18
+
+local function GetNormalizedFontSize(size)
+    if size == DEFAULT_FONT_SIZE then
+        size = LibConf.DefaultFontSize
+    end
+    if size == nil or type(size) ~= "number" or size <= 0 then
+        size = LibConf.DefaultFontSize *Scale
+    end
+
+    size = math.ceil(size)
+    return size
+end
+
 ---@param size number? font size, default 18
 ---@return any # font object
 function _M.LoadImguiCJKFont(size)
-    if size == nil then size = 18 *Scale end
+    size = GetNormalizedFontSize(size)
     if CJKFontTable[size] == nil then
         local lang = Language.GetLanguage()
         local cfg = PickLanguageFont(lang)
@@ -113,9 +127,7 @@ local D2dDefaultFontTable = {}
 ---@param bold boolean|nil
 ---@param italic boolean|nil
 function _M.LoadD2dFont(size, bold, italic)
-    if size == nil or type(size) ~= "number" or size <= 0 then size = 18 *Scale end
-
-    size = math.ceil(size)
+    size = GetNormalizedFontSize(size)
     local key = tostring(size)
     if bold then
         key = key .. "_B"

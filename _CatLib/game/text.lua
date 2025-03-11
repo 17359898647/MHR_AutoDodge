@@ -40,6 +40,8 @@ _M.SKILL_NAMES = {}
 _M.ASKILL_NAMES = {}
 ---@type table<app.Wp05Def.WP05_MUSIC_SKILL_TYPE, string>
 _M.MUSIC_SKILL_NAMES = {}
+---@type table<app.OtomoDef.MUSIC_SKILL_TYPE, string>
+_M.OTOMO_MUSIC_SKILL_NAMES = {}
 ---@type table<app.EquipDef.ACCESSORY_ID, string>
 _M.ACC_NAMES = {}
 
@@ -391,6 +393,7 @@ function _M.GetFixedBySkill(skill)
 
     return SkillToSkillFixedMap[skill]
 end
+local SkillEnumNames = Utils.GetEnumMap("app.HunterDef.Skill")
 
 ---@type table<app.HunterDef.Skill, table<integer, string>>
 local SkillDataMap = {}
@@ -421,10 +424,11 @@ local function InitSkillDataMap()
         if not mapName or mapName == "" then
             return
         end
-        -- log.info("initing " .. mapName .. ": " .. tostring(data:get_skillId()))
+        local skillId = data:get_skillId()
+        -- log.info("initing " .. mapName .. ": " .. tostring(skillId))
         local mismatch = {}
         Utils.ForEach(data._openSkill, function (fixedSkill)
-            local skill = Utils.TryGetDict(SkillFixedToSkill, fixedSkill)
+            local skill = Utils.FixedToEnum("app.HunterDef.Skill", fixedSkill)
             if skill ~= nil then
                 if skill <= 0 then
                     return
@@ -433,6 +437,7 @@ local function InitSkillDataMap()
                 if not name or name == "" then
                     table.insert(mismatch, skill)
                 end
+                -- log.info(string.format("Open Skill %s: [%s] %d", tostring(name), SkillEnumNames[skill], skill))
             else
                 log.info(tostring(fixedSkill) .. " not in dict")
             end
@@ -497,15 +502,17 @@ function _M.GetAllSkillNames()
     InitSkillFixedToSkillMap()
 
     for _, skill in pairs(SkillFixedToSkillMap) do
-        log.info(string.format("Skill %d", skill))
+        log.info(string.format("[%s] %d", SkillEnumNames[skill], skill))
         AllSkillNames[skill] = _getSkillName(skill)
-        log.info(string.format("Skill %d: %s", skill, AllSkillNames[skill]))
+        log.info(string.format("[%s] %d: %s", SkillEnumNames[skill], skill, AllSkillNames[skill]))
     end
     
     return AllSkillNames
 end
 
 function _M.GetSkillName(skill, lv)
+    -- _M.GetAllSkillNames()
+    -- InitSkillDataMap()
     local name = _getSkillName(skill)
     if name == "" then 
         if lv ~= nil then
@@ -544,6 +551,19 @@ function _M.GetMusicSkillName(music)
     local guid = GetMusicSkillNameGuidFunc:call(nil, music)
     _M.MUSIC_SKILL_NAMES[music] = _M.GetLocalizedText(guid)
     return _M.MUSIC_SKILL_NAMES[music]
+end
+
+-- local GetOtomoSkillNameGuidFunc = sdk.find_type_definition("app.Wp05Def"):get_method("MusicSkillName(app.Wp05Def.WP05_MUSIC_SKILL_TYPE)")
+function _M.GetOtomoSkillName(music)
+    if true then
+        return 
+    end
+    -- if _M.OTOMO_MUSIC_SKILL_NAMES[music] then
+    --    return _M.OTOMO_MUSIC_SKILL_NAMES[music] 
+    -- end
+    -- local guid = GetOtomoSkillNameGuidFunc:call(nil, music)
+    -- _M.OTOMO_MUSIC_SKILL_NAMES[music] = _M.GetLocalizedText(guid)
+    -- return _M.OTOMO_MUSIC_SKILL_NAMES[music]
 end
 
 local GetAccessoryNameFunc = sdk.find_type_definition("app.EquipDef"):get_method("Name(app.EquipDef.ACCESSORY_ID)")

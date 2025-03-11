@@ -102,7 +102,10 @@ _M.LanguageType = {
     FieldPitfall = 31,
     SmokeBall = 32,
     EmLead = 33, -- Unknown
-    -- Skill Stabbing P1~P4
+    SkillStabbing_P1 = 34, -- 锁刃刺击
+    SkillStabbing_P2 = 35, -- 锁刃刺击
+    SkillStabbing_P3 = 36, -- 锁刃刺击
+    SkillStabbing_P4 = 37, -- 锁刃刺击
     Ryuki = 38,
     Trap_Fall = 39, -- OK
     Trap_Paralyse = 40, -- OK

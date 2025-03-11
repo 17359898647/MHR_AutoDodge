@@ -71,17 +71,37 @@ local LANGUAGES = {
     [CONST.LanguageType.SimplifiedChinese] = "Chinese",
 }
 
+local RENDER_BACKENDS = {
+    [1] = "reframework-d2d",
+    [2] = "reframework",
+}
+
+if Conf.RenderBackend == nil then
+    Conf.RenderBackend = 1
+end
+if Conf.DefaultFontSize == nil then
+    Conf.DefaultFontSize = 18
+end
+if Conf.FontScale == nil then
+    Conf.FontScale = 1
+end
+
 re.on_draw_ui(function()
     local changed = false
     local configChanged = false
 
     if imgui.tree_node("_CatLib Global Config") then
+        imgui.begin_rect()
         imgui.text("UI Scale: by default, 0.5x for 1080p, 0.75x for 2K, 1x for 4K (2160p).")
         imgui.text("This option is used to initialize mod configuration, doesn't work if the config file has been generated.")
         imgui.text("You need to delete existed config files under reframework/data directory.")
         changed, Conf.UIScale = imgui.drag_float("UI Scale", Conf.UIScale, 0.1, 0.5, 4)
         configChanged = configChanged or changed
+        imgui.end_rect()
+        
+        imgui.text("")
 
+        imgui.begin_rect()
         imgui.text("You need to reset script or restart the game after changing this")
 
         changed, Conf.LanguageOverride = imgui.checkbox("Override Language", Conf.LanguageOverride)
@@ -89,7 +109,19 @@ re.on_draw_ui(function()
 
         changed, Conf.Language = imgui.combo("Language", Conf.Language, LANGUAGES)
         configChanged = configChanged or changed
-    
+        imgui.end_rect()
+        
+        -- imgui.text("")
+
+        -- imgui.begin_rect()
+        -- changed, Conf.RenderBackend = imgui.combo("Render Backend", Conf.RenderBackend, RENDER_BACKENDS)
+        -- configChanged = configChanged or changed
+        -- imgui.end_rect()
+
+        -- changed, Conf.FontScale = imgui.drag_float("Font Scale", Conf.UIScale, 0.1, 0.5, 4)
+        -- configChanged = configChanged or changed
+        
+        
         imgui.tree_pop();
     end
 

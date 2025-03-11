@@ -31,6 +31,19 @@ function _M.IsInBattle()
     return mgr:get_IsBattle()
 end
 
+---@return boolean
+function _M.IsInTrainingArea()
+    local player = _M.GetCharacter()
+    if not player then
+        return false
+    end
+    local ctrl = player:get_ASkillController()
+    if not ctrl then
+        return false
+    end
+    return ctrl:get_IsInTrainingArea()
+end
+
 ---@return app.cPlayerManageInfo
 function _M.GetInfo()
     if CACHE.PlayerInfo == nil and Singletons.GetPlayerManager() then
@@ -56,6 +69,14 @@ function _M.IsWearMantle()
         return armorCtrl._IsMantleOff
     end
     return false
+end
+
+---@return app.cPlayerCatalogHolder?
+function _M.GetPlayerCatalogHolder()
+    if Singletons.GetPlayerManager() then
+        return Singletons.GetPlayerManager():get_Catalog()
+    end
+    return nil
 end
 
 ---@return app.Weapon?

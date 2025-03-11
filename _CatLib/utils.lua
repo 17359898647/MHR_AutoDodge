@@ -23,6 +23,11 @@ local GetElapsedTimeMillisecondMethod = sdk.find_type_definition("via.Applicatio
 function _M.GetElapsedTimeMs()
 	return GetElapsedTimeMillisecondMethod:call(nil)
 end
+local GetDeltaTimeMethod = sdk.find_type_definition("via.Application"):get_method("get_DeltaTime")
+-- local GetDeltaTimeMethod = sdk.find_type_definition("ace.WorkRate"):get_method("getAppDeltaTime()")
+function _M.GetDeltaTime()
+    return GetDeltaTimeMethod:call(nil)
+end
 
 ---@param total number
 ---@return string
@@ -109,6 +114,19 @@ function _M.ForEachDict(dict, func)
         return func(k, v)
     end)
 end
+
+---@param table table
+---@param key any
+---@return boolean
+function _M.IsInTable(table, key)
+    for k, v in pairs(table) do
+        if v == key then
+            return true
+        end
+    end
+    return false
+end
+
 
 ---@param dict System.Dictionary
 ---@param key any
@@ -266,7 +284,7 @@ end
 ---@param target string
 ---@return boolean
 function _M.StringContains(str, target)
-    return string.find(str, target)
+    return string.find(str, target, 1, true)
 end
 
 --- 将多个表递归合并为一个表，包含子表。

@@ -844,7 +844,7 @@ function _M.GetActionNameByHitInfo(hitInfo, lang)
     end
 
     if wpFixup then
-        Game.SendMessage("fixup %d", attackIndex)
+        -- Game.SendMessage("fixup %d", attackIndex)
         local fixupName = wpFixup[attackIndex]
         if fixupName then
             if type(fixupName) == "number" then

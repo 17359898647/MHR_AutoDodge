@@ -470,7 +470,11 @@ function _M.NewDivRenderer(posX, posY, width, height, enable, marginX, marginY, 
 
     function _Renderer.DrawDebugBlock()
         if not _Renderer.Enable or not _Renderer.DebugMode then return end
-        d2d.outline_rect(_Renderer._x, _Renderer._y, _Renderer._w, _Renderer._h, 1, _Renderer.DebugColor)
+        if d2d then
+            d2d.outline_rect(_Renderer._x, _Renderer._y, _Renderer._w, _Renderer._h, 1, _Renderer.DebugColor)
+        else
+            draw.outline_rect(_Renderer._x, _Renderer._y, _Renderer._w, _Renderer._h, _Renderer.DebugColor)
+        end
         
         local adder = 0x08
         local R = (_Renderer.DebugColor >> 16) & 0xFF

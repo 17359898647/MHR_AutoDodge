@@ -27,6 +27,8 @@ local OutlineRect = D2dUtils.OutlineRect
 local Line = D2dUtils.Line
 local Text = D2dUtils.Text
 
+_M.Measure = D2dUtils.Measure
+
 _M.Rect = Rect
 _M.OutlineRect = OutlineRect
 _M.Line = Line
@@ -125,18 +127,18 @@ function _M.SetAlphaRatio(color, ratio)
 end
 
 function _M.Bar(x, y, width, height, ratio, bgColor, barColor, shadowColor)
-    -- d2d.fill_rect(x - 1, y - 1, width + 2, height + 2, 0xFF000000)
+    -- Rect(x - 1, y - 1, width + 2, height + 2, 0xFF000000)
     local barWidth = ratio*width
     if bgColor then
-        d2d.outline_rect(x, y, width, height, 2, bgColor)
-        d2d.fill_rect(x+barWidth, y, width-barWidth, height, bgColor)
+        OutlineRect(x, y, width, height, 2, bgColor)
+        Rect(x+barWidth, y, width-barWidth, height, bgColor)
     end
     if shadowColor then
         local h = math.floor(height / 2)
-        d2d.fill_rect(x, y, barWidth, h, barColor)
-        d2d.fill_rect(x, y+h, barWidth, h, shadowColor)
+        Rect(x, y, barWidth, h, barColor)
+        Rect(x, y+h, barWidth, h, shadowColor)
     else
-        d2d.fill_rect(x, y, barWidth, height, barColor)
+        Rect(x, y, barWidth, height, barColor)
     end
 end
 
@@ -425,11 +427,9 @@ end
 ---@param cfg FontConfig
 ---@param text string
 function _M.TextSize(cfg, text)
-    local font = _M.LoadD2dFontWithConfig(cfg)
-
     local textW, textH = 0, 0
     if cfg.Width == nil or cfg.Height == nil then
-        textW, textH = font:measure(text)
+        textW, textH = _M.Measure(cfg, text)
     end
     if cfg.Width ~= nil then
         textW = cfg.Width
@@ -454,11 +454,9 @@ function _M.SmartText(divX, divY, divWidth, divHeight, cfg, text)
     cfg = _M.DefaultFontConfig(cfg)
     if not cfg.Enable then return divX, divY, 0, 0 end
 
-    local font = _M.LoadD2dFontWithConfig(cfg)
-
     local textW, textH = 0, 0
     if cfg.Width == nil or cfg.Height == nil then
-        textW, textH = font:measure(text)
+        textW, textH = _M.Measure(cfg, text)
     end
     if cfg.Width ~= nil then
         textW = cfg.Width

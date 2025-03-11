@@ -112,12 +112,20 @@ end
 
 ---@return ReMethod
 function _M.TypeMethod(typename, methodName)
-    return sdk.find_type_definition(typename):get_method(methodName)
+    local method = sdk.find_type_definition(typename):get_method(methodName)
+    if not method then
+        log.error(string.format("type %s method %s not found", typename, methodName))
+    end
+    return method
 end
 
 ---@return ReField
 function _M.TypeField(typename, fieldName)
-    return sdk.find_type_definition(typename):get_field(fieldName)
+    local field = sdk.find_type_definition(typename):get_field(fieldName)
+    if not field then
+        log.error(string.format("type %s field %s not found", typename, fieldName))
+    end
+    return field
 end
 
 ---@return System.Type

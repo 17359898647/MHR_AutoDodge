@@ -50,6 +50,7 @@ end
 -------------------------------
 
 _M.GetTypeIterateFunction = Utils.GetTypeIterateFunction
+_M.IsInTable = Utils.IsInTable
 _M.ForEach = Utils.ForEach
 _M.ForEachBreak = Utils.ForEachBreak
 _M.ForEachDict = Utils.ForEachDict
@@ -66,6 +67,24 @@ _M.StringContains = Utils.StringContains
 
 function _M.HookStorage()
     return thread.get_hook_storage()
+end
+
+function _M.SetThis(this, key)
+    local storage = _M.HookStorage()
+    
+    if key == nil then
+        key = "this"
+    end
+    storage[key] = this
+end
+
+function _M.GetThis(this, key)
+    local storage = _M.HookStorage()
+    
+    if key == nil then
+        key = "this"
+    end
+    return storage[key]
 end
 
 -------------------------------
@@ -129,6 +148,7 @@ _M.GetLanguage = LanguageUtils.GetLanguage
 _M.IsChinese = LanguageUtils.IsChinese
 
 _M.IsInBattle = Player.IsInBattle
+_M.IsInTrainingArea = Player.IsInTrainingArea
 _M.IsWearMantle = Player.IsWearMantle
 _M.GetPlayerInfo = Player.GetInfo
 _M.GetPlayerCharacter = Player.GetCharacter
@@ -139,6 +159,7 @@ _M.GetPlayerSubWeaponType = Player.GetSubWeaponType
 _M.GetPlayerWeaponHandling = Player.GetWeaponHandling
 _M.GetPlayerSubWeaponHandling = Player.GetSubWeaponHandling
 _M.GetPlayerGameObject = Player.GetGameObject
+_M.GetPlayerCatalogHolder = Player.GetPlayerCatalogHolder
 
 _M.IsPlayingQuest = Quest.IsPlaying
 _M.IsActiveQuest = Quest.IsActive
@@ -193,6 +214,7 @@ end
 -------------------------------
 _M.GetTime = Utils.GetTime
 _M.GetElapsedTimeMs = Utils.GetElapsedTimeMs
+_M.GetDeltaTime = Utils.GetDeltaTime
 _M.GetTimeString = Utils.GetTimeString
 _M.IsValidName = Utils.IsValidName
 

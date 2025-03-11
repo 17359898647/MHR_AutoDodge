@@ -5,4 +5,6 @@ dist
 .eslintcache
 
 .idea
+# 排除所有层级的.DS_Store
 .DS_Store
+

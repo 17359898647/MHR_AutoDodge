@@ -16,6 +16,8 @@ local table = table
 local FontUtils = require("_CatLib.font")
 local Game = require("_CatLib.game")
 local Utils = require("_CatLib.utils")
+local LibConf = require("_CatLib.config")
+local IsD2d = LibConf.RenderBackend == 1
 
 local _M = {}
 
@@ -48,6 +50,8 @@ end
 ---@field D2dRegister fun(init: fun(), drawCall: fun()|nil)
 ---@field HookFunc fun(typename: string, method: string, preFunc: HookPreFunc, postFunc: HookPostFunc|nil)
 ---@field LoadImage fun(path: string): Image
+---@field indent fun()
+---@field deindent fun()
 ---@field info fun(msg: string, args...)
 ---@field error fun(msg: string, args...)
 ---@field verbose fun(msg: string, args...)
@@ -77,6 +81,8 @@ function _M.NewMod(modName, configFileName)
     Mod.PerfCostCount = {}
     Mod.PerfCostCompare = {}
     Mod.PerfCostOrder = {}
+
+    Mod.Indent = 0
     -- Mod.UpdateFuncs = {}
     -- Mod.D2dInitFuncs = {}
     -- Mod.D2dFuncs = {}
@@ -404,10 +410,7 @@ function _M.NewMod(modName, configFileName)
                 FontUtils.LoadD2dFont(Mod.D2dFontSize)
             end
         end
-
-        d2d.register(function()
-            init()
-        end, function ()
+        local RenderFunc = function ()
             if key and not Mod.RenderCost[key] then
                 table.insert(Mod.RenderCostOrder, key)
             end
@@ -421,7 +424,16 @@ function _M.NewMod(modName, configFileName)
             if key then
                 Mod.RenderCost[key] = Utils.GetElapsedTimeMs() - Mod.RenderCost[key]
             end
-        end)
+        end
+        if IsD2d then
+            d2d.register(function()
+                Mod.D2dReset()
+                init()
+            end, RenderFunc)
+        else
+            -- init()
+            re.on_frame(RenderFunc)
+        end
     end
 
     ---@param typename string
@@ -479,19 +491,38 @@ function _M.NewMod(modName, configFileName)
         return Mod.IMAGE_CACHE[path]
     end
 
+    function Mod.D2dReset()
+        Mod.IMAGE_CACHE = {}
+    end
+
+    function Mod.indent()
+        Mod.Indent = Mod.Indent + 1
+    end
+
+    function Mod.deindent()
+        Mod.Indent = Mod.Indent - 1
+        if Mod.Indent < 0 then
+            Mod.Indent = 0
+        end
+    end
+
+    function Mod.get_indent()
+        return string.rep("  ", Mod.Indent)
+    end
+
     function Mod.verbose(msg, ...)
         Mod.HasVerbose = true
         if Mod.Config.Verbose or Mod.Config.Debug then
-            log.info(Mod.LogPrefix .. string.format(msg, ...))
+            log.info(Mod.LogPrefix .. Mod.get_indent() .. string.format(msg, ...))
         end
     end
     
     function Mod.info(msg, ...)
-        log.info(Mod.LogPrefix .. string.format(msg, ...))
+        log.info(Mod.LogPrefix .. Mod.get_indent() .. string.format(msg, ...))
     end
     
     function Mod.error(msg, ...)
-        log.error(Mod.LogPrefix .. string.format(msg, ...))
+        log.error(Mod.LogPrefix .. Mod.get_indent() .. string.format(msg, ...))
     end
     
     Mod.ModName = modName
