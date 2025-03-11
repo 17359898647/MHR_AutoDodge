@@ -1,38 +1,40 @@
 local Core = require("_CatLib")
 local CONST = require("_CatLib.const")
 local mod = Core.NewMod("Auto DualBlades Dodge")
+local _player = require("_CatLib.game.player")
+local _singleton = require("_CatLib.game.singletons")
 mod.EnableCJKFont(18) -- 启用中文字体
 
 -- 基础变量
 local MasterPlayer      -- 主玩家对象引用
 local player
 local gameObje
-local action_index
-local action_cata
+local action_index = 0
+local action_cata = 0
 local damage_owner = ""
 local isWeaponOn = false
-local motionID          -- 动作ID
+local motionID         -- 动作ID
 local masterInitialized = false -- 主玩家是否已初始化
 local CurrentWeaponType
 local CurrentWeaponTypeName = ""
 
 local function initMaster()
   if not MasterPlayer then
-    MasterPlayer = sdk.get_managed_singleton("app.PlayerManager")
+    MasterPlayer = _singleton.GetPlayerManager()
   end
   if not MasterPlayer then return false end
 
   if not player then
-    player = MasterPlayer:getMasterPlayer()
+    player = _player.GetInfo()
   end
   if not player then return false end
 
   if not gameObje then
-    gameObje = player:get_Object()
+    gameObje = _player.GetGameObject()
   end
   if not gameObje then return false end
 
-  motionID = gameObje:call("getComponent(System.Type)", sdk.typeof('via.motion.Motion')):getLayer(0):get_MotionID()
+  motionID = Core.GetPlayerMotionData().MotionID
   masterInitialized = true
   return true
 end
@@ -72,11 +74,11 @@ local WEAPON_TYPE_NAMES = {
 ---@field dogeCooldown number 躲避冷却时间设置  
 ---@field lasterDodgeTime number 上一次躲避时间
 ---@field CD number 躲避冷却时间
----@field SelectDodgeIndex number 选择躲避动作索引
+---@field ActionIndex number 选择躲避动作索引
 ---@field excludedActionIndices number[] 排除动作ID
 ---@field checkMotionState function 检查动作状态
 ---@field isEquipped function 检查是否装备武器
----@field dogeFun function 执行躲避功能
+---@field ActionFun function 执行躲避功能
 ---@field excludedActionMap table<number, boolean> 懒加载哈希表
 local config={}
 -- 统一的isEquipped函数，接受武器配置和武器类型作为参数
@@ -93,13 +95,15 @@ local function createIsEquipped(weaponConfig, weaponType)
 end
 
 -- 统一的躲避函数，接受武器配置和武器类型作为参数
-local function createDogeFun(weaponConfig, weaponType)
+local function createActionFun(weaponConfig, weaponType, category, index)
   if not initMaster() then
     return
   end
   
+  category = category or 2 -- 默认类别为2
+  index = index or weaponConfig.ActionIndex -- 默认索引为配置中的ActionIndex
   if damage_owner == "MasterPlayer" and weaponConfig.isEquipped() then
-    local actionID = NewActionID(2, weaponConfig.SelectDodgeIndex)
+    local actionID = NewActionID(category, index)
     if player:get_Character():call(
         "changeActionRequest(app.AppActionDef.LAYER, ace.ACTION_ID, System.Boolean)",
         0, 
@@ -108,6 +112,7 @@ local function createDogeFun(weaponConfig, weaponType)
     ) then
       weaponConfig.lasterDodgeTime = os.clock()
       damage_owner = ""
+      log.debug('success')
     end
   end
 end
@@ -117,7 +122,9 @@ local function checkMotionState(weaponConfig, weaponType)
   if not initMaster() then
     return false
   end
-  
+  if not weaponConfig.excludedActionIndices or next(weaponConfig.excludedActionIndices) == nil then
+    return true
+  end
   -- 懒加载：如果还没有创建哈希表，则创建一个
   if not weaponConfig.excludedActionMap then
     -- 创建一个哈希表用于O(1)查找
@@ -142,7 +149,7 @@ config[CONST.WeaponType.DualBlades] = {
   backward = 42, -- 向后躲避动作索引
   left = 43, -- 向左躲避动作索引
   right = 44, -- 向右躲避动作索引
-  SelectDodgeIndex = 41, -- 选择躲避动作索引
+  ActionIndex = 41, -- 选择躲避动作索引
   lasterDodgeTime = 0,
   CD = 0.5,
   excludedActionIndices = {
@@ -158,8 +165,8 @@ config[CONST.WeaponType.DualBlades] = {
   isEquipped = function()
     return createIsEquipped(config[CONST.WeaponType.DualBlades], CONST.WeaponType.DualBlades)
   end,
-  dogeFun = function ()
-    return createDogeFun(config[CONST.WeaponType.DualBlades], CONST.WeaponType.DualBlades)
+  ActionFun = function ()
+    return createActionFun(config[CONST.WeaponType.DualBlades], CONST.WeaponType.DualBlades)
   end,
 }
 
@@ -168,7 +175,7 @@ config[CONST.WeaponType.Bow] = {
   backward = 10, -- 向后躲避动作索引
   left = 11, -- 向左躲避动作索引
   right = 12, -- 向右躲避动作索引
-  SelectDodgeIndex = 9, -- 选择躲避动作索引
+  ActionIndex = 9, -- 选择躲避动作索引
   lasterDodgeTime = 0,
   CD = 0.5,
   excludedActionIndices = {
@@ -185,8 +192,56 @@ config[CONST.WeaponType.Bow] = {
   isEquipped = function()
     return createIsEquipped(config[CONST.WeaponType.Bow], CONST.WeaponType.Bow)
   end,
-  dogeFun = function ()
-    return createDogeFun(config[CONST.WeaponType.Bow], CONST.WeaponType.Bow)
+  ActionFun = function ()
+    return createActionFun(config[CONST.WeaponType.Bow], CONST.WeaponType.Bow)
+  end,
+}
+
+local isCharging = false --- config中配置不能实时监听,不清楚原因
+-- 大剑躲避配置
+config[CONST.WeaponType.GreatSword] = {
+  -- 格挡索引
+  guard = 141,
+  -- 是否格挡
+  needGuard = true,
+  -- 肩撞索引
+  shoulder = 15,
+  -- 是否肩撞
+  needShoulder = true,
+  isCharging = false,
+  ActionIndex = 141, -- 选择动作索引，默认为格挡
+  lasterDodgeTime = 0,
+  CD = 0.5,
+  excludedActionIndices = {
+    213,237,248,476,474,18,19 -- 都是蓄力斩的斩击id
+  },  -- 排除动作id
+  checkMotionState = function()
+    return checkMotionState(config[CONST.WeaponType.GreatSword], CONST.WeaponType.GreatSword)
+  end,
+  isEquipped = function ()
+    -- 根据当前状态判断是否执行动作
+    if isCharging then
+      -- 蓄力状态下，检查是否需要肩撞
+      if not config[CONST.WeaponType.GreatSword].needShoulder then
+        return false
+      end
+    else
+      -- 非蓄力状态下，检查是否需要格挡
+      if not config[CONST.WeaponType.GreatSword].needGuard then
+        return false
+      end
+    end
+    return createIsEquipped(config[CONST.WeaponType.GreatSword], CONST.WeaponType.GreatSword)
+  end,
+  ActionFun = function ()
+    local category = 1
+    local index = config[CONST.WeaponType.GreatSword].guard
+    if isCharging then
+      category = 2
+      index = config[CONST.WeaponType.GreatSword].shoulder
+    end
+
+    return createActionFun(config[CONST.WeaponType.GreatSword], CONST.WeaponType.GreatSword, category, index)
   end,
 }
 
@@ -213,13 +268,14 @@ function getCurrentWeaponType()
   if not player then return end
   
   -- 使用参考代码中的方法获取武器类型
+  -- app.HunterCharacter
   local character = player:call("get_Character")
   if not character then return end
-  
+  -- app.Weapon
   local weapon = character:call("get_Weapon")
   if not weapon then return end
   
-  -- 获取武器类型
+  -- app.WeaponDef.TYPE
   local wpType = weapon:get_field("_WpType")
   if wpType ~= nil then
       CurrentWeaponType = wpType
@@ -228,9 +284,31 @@ function getCurrentWeaponType()
   end
 end
 
+
+local function checkIsMaster(hitinfo)
+  local k__BackingField = hitinfo:get_field('<AttackOwner>k__BackingField'):get_Name()
+  local player = hitinfo:get_field("<DamageOwner>k__BackingField"):get_Name()
+  local em = fuzzy_match(k__BackingField, "Em")
+  local minEm = fuzzy_match(k__BackingField, "em")
+  local gm = fuzzy_match(k__BackingField, "Gm")
+  local heal = fuzzy_match(k__BackingField, "Heal")
+  local isMasterPlayer = player == "MasterPlayer"
+  local isEquipped = false
+  if CurrentWeaponType and config[CurrentWeaponType] and type(config[CurrentWeaponType].isEquipped) == "function" then
+    isEquipped = config[CurrentWeaponType].isEquipped()
+  end
+  damage_owner = hitinfo:get_field("<DamageOwner>k__BackingField"):get_Name()
+  return (em == true or gm == true or minEm == true) and heal == false and isEquipped and isMasterPlayer
+end
+
+ 
+
 -- 攻击检测钩子
-mod.HookFunc("app.Hit", "callHitReturnEvent(System.Delegate[], app.HitInfo)",
+mod.HookFunc("app.HunterCharacter", "evHit_Damage(app.HitInfo)",
     function(args)
+      if CurrentWeaponType == CONST.WeaponType.GreatSword then
+        return
+      end
       if not masterInitialized then
         initMaster()
         return
@@ -239,29 +317,59 @@ mod.HookFunc("app.Hit", "callHitReturnEvent(System.Delegate[], app.HitInfo)",
       if not isWeaponOn then
         return
       end
-
       local hitinfo = sdk.to_managed_object(args[3])
-      local em = fuzzy_match(hitinfo:get_field('<AttackOwner>k__BackingField'):get_Name(), "Em")
-      local minEm = fuzzy_match(hitinfo:get_field('<AttackOwner>k__BackingField'):get_Name(), "em")
-      local gm = fuzzy_match(hitinfo:get_field('<AttackOwner>k__BackingField'):get_Name(), "Gm")
-      local heal = fuzzy_match(hitinfo:get_field('<AttackOwner>k__BackingField'):get_Name(), "Heal")
-      local isMasterPlayer = hitinfo:get_field("<DamageOwner>k__BackingField"):get_Name() == "MasterPlayer"
-
-      local isEquipped = false
-      if CurrentWeaponType and config[CurrentWeaponType] and type(config[CurrentWeaponType].isEquipped) == "function" then
-        isEquipped = config[CurrentWeaponType].isEquipped()
-      end
-
-
-      damage_owner = hitinfo:get_field("<DamageOwner>k__BackingField"):get_Name()
-      if (em == true or gm == true or minEm == true) and heal == false and isEquipped and isMasterPlayer then
-        damage_owner = "MasterPlayer"
+      local result = checkIsMaster(hitinfo)
+      if result then
         return sdk.PreHookResult.SKIP_ORIGINAL
       else
         damage_owner = ""
-      end 
+      end
+    end,
+    function (retval)
+      if CurrentWeaponType == CONST.WeaponType.GreatSword then
+        return retval
+      end
+      if config[CurrentWeaponType] and
+        type(config[CurrentWeaponType].ActionFun) == "function"
+      then
+        config[CurrentWeaponType].ActionFun()
+      end
+      return retval
     end
 )
+
+local action = false
+
+local function noHitTimer(time)
+  player:get_Character():startNoHitTimer(time)
+end
+
+mod.HookFunc("app.HitController", "checkAngleLimit(app.HitInfo)", 
+  function(args)
+  if CurrentWeaponType ~= CONST.WeaponType.GreatSword then
+    return
+  end
+  local hitInfo = sdk.to_managed_object(args[3])
+  local result = checkIsMaster(hitInfo)
+  
+    if config[CurrentWeaponType] and
+    type(config[CurrentWeaponType].ActionFun) == "function" and
+    result
+    then
+      config[CurrentWeaponType].ActionFun()
+      action = true
+    end
+  end,
+  function(retval)
+    if action then
+      noHitTimer(1)
+      action = false
+      return sdk.to_ptr(false)
+    end
+    return retval
+  end
+)
+
 
 mod.OnFrame(
   function ()
@@ -295,7 +403,7 @@ local DualBladesMenu =  function ()
     end
     
     -- 找到当前选择的索引
-    local currentDodgeIndex = config[CONST.WeaponType.DualBlades].SelectDodgeIndex
+    local currentDodgeIndex = config[CONST.WeaponType.DualBlades].ActionIndex
     local currentDirectionIndex = 0
     for i=0, 3 do
       if indexMapping[i] == currentDodgeIndex then
@@ -307,7 +415,7 @@ local DualBladesMenu =  function ()
     changed, currentDirectionIndex = imgui.combo("躲避方向", currentDirectionIndex + 1, directionsArray)
     if changed then
       -- 转换回实际的动作索引
-      config[CONST.WeaponType.DualBlades].SelectDodgeIndex = indexMapping[currentDirectionIndex - 1]
+      config[CONST.WeaponType.DualBlades].ActionIndex = indexMapping[currentDirectionIndex - 1]
       configChanged = true
     end
     imgui.separator()
@@ -353,7 +461,7 @@ local BowMenu = function ()
     end
     
     -- 找到当前选择的索引
-    local currentDodgeIndex = config[CONST.WeaponType.Bow].SelectDodgeIndex
+    local currentDodgeIndex = config[CONST.WeaponType.Bow].ActionIndex
     local currentDirectionIndex = 0
     for i=0, 3 do
       if indexMapping[i] == currentDodgeIndex then
@@ -365,7 +473,7 @@ local BowMenu = function ()
     changed, currentDirectionIndex = imgui.combo("躲避方向", currentDirectionIndex + 1, directionsArray)
     if changed then
       -- 转换回实际的动作索引
-      config[CONST.WeaponType.Bow].SelectDodgeIndex = indexMapping[currentDirectionIndex - 1]
+      config[CONST.WeaponType.Bow].ActionIndex = indexMapping[currentDirectionIndex - 1]
       configChanged = true
     end
     imgui.separator()
@@ -386,6 +494,42 @@ local BowMenu = function ()
   imgui.separator()
 end
 
+local GreatSwordMenu = function ()
+  if imgui.tree_node("大剑配置") then
+    -- 创建一个改变冷却时间的控件
+    local cooldownValue = config[CONST.WeaponType.GreatSword].CD
+
+    changed, cooldownValue = imgui.drag_float("操作冷却时间（秒）", 
+      cooldownValue, 0.05, 0.0, 10.0)
+    if changed then
+      config[CONST.WeaponType.GreatSword].CD = cooldownValue
+      configChanged = true
+    end
+    imgui.text("冷却剩余时间: " .. string.format("%.2f", math.max(0, config[CONST.WeaponType.GreatSword].CD - (os.clock() - config[CONST.WeaponType.GreatSword].lasterDodgeTime))))
+    
+    -- 显示当前蓄力状态
+    imgui.text("当前蓄力状态: " .. (isCharging and "正在蓄力" or "未蓄力"))
+    
+    -- 添加控制是否启用格挡的复选框
+    local needGuard = config[CONST.WeaponType.GreatSword].needGuard
+    changed, needGuard = imgui.checkbox("启用格挡 (普通状态)", needGuard)
+    if changed then
+      config[CONST.WeaponType.GreatSword].needGuard = needGuard
+      configChanged = true
+    end
+    
+    -- 添加控制是否启用肩撞的复选框
+    local needShoulder = config[CONST.WeaponType.GreatSword].needShoulder
+    changed, needShoulder = imgui.checkbox("启用肩撞 (蓄力状态)", needShoulder)
+    if changed then
+      config[CONST.WeaponType.GreatSword].needShoulder = needShoulder
+      configChanged = true
+    end
+    
+    imgui.tree_pop()
+  end
+end
+
 -- 菜单
 mod.Menu(function ()
   local configChanged = false
@@ -404,8 +548,8 @@ mod.Menu(function ()
     if CurrentWeaponType and config[CurrentWeaponType] and type(config[CurrentWeaponType].isEquipped) == "function" then
 
       isEquipped = config[CurrentWeaponType].isEquipped()
-      -- 是否会躲避
-      imgui.text("是否会躲避: " .. tostring(isEquipped))
+      -- 是否会自动
+      imgui.text("是否会自动: " .. tostring(isEquipped))
     end
     -- 伤害来源
     imgui.separator()
@@ -414,31 +558,30 @@ mod.Menu(function ()
   
   DualBladesMenu()
   BowMenu()
+  GreatSwordMenu()
   
 end)  
 
 mod.Run()
 
-
-
+-- Hook大剑蓄力开始函数
 mod.HookFunc(
-  "app.Wp02_Export",
-  "table_60dfb982_a642_4d77_9469_bb85f9cb2cf8(ace.btable.cCommandWork, ace.btable.cOperatorWork)",
+  "app.Wp00Action.cChargeBase",
+  "doEnter()",
   function(args)
-    if config[CONST.WeaponType.DualBlades] and type(config[CONST.WeaponType.DualBlades].dogeFun) == "function" then
-      config[CONST.WeaponType.DualBlades].dogeFun()
-    end
+    config[CONST.WeaponType.DualBlades].isCharging = true
+    isCharging = true
+    return sdk.PreHookResult.CALL_ORIGINAL
   end
 )
 
-
+-- Hook大剑蓄力结束函数
 mod.HookFunc(
-  "app.Wp11_Export",
-  "table_99846ae5_a439_4665_b14e_8b37f6562cf5(ace.btable.cCommandWork, ace.btable.cOperatorWork)",
+  "app.Wp00Action.cChargeBase",
+  "doExit()",
   function(args)
-    if config[CONST.WeaponType.Bow] and type(config[CONST.WeaponType.Bow].dogeFun) == "function" then
-      config[CONST.WeaponType.Bow].dogeFun()
-    end
-    -- log.debug("Wp11_Export hook")
+    config[CONST.WeaponType.DualBlades].isCharging = false
+    isCharging = false
+    return sdk.PreHookResult.CALL_ORIGINAL
   end
 )
