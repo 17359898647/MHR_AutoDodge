@@ -134,13 +134,15 @@ local function onChangeAngles()
   local cataLog = Core.GetPlayerCatalogHolder()
   if not cataLog then return end
   local param = cataLog:get_Wp00ActionParam()
-  param._GuardDegree = mod.Config.angles
+  if param then
+    param._GuardDegree = mod.Config.angles
+  end
 end
 
 mod.OnPreUpdateBehavior(function ()
-    onChangeAngles()
     local motionData = Core.GetPlayerMotionData()
     if not motionData then return end
+    onChangeAngles()
     motionData.Category = playerMotionData.Category
     motionData.Index = playerMotionData.Index
     motionData.CurrentWeaponType = _player.GetWeaponType()
