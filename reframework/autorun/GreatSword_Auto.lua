@@ -1,9 +1,10 @@
 local Core = require("_CatLib")
 local CONST = require("_CatLib.const")
 local timer = require("_CatLib.utils.timer")
-local mod = Core.NewMod("GreatSword Auto","GreatSword_Auto")
 local _player = require("_CatLib.game.player")
 local _singleton = require("_CatLib.game.singletons")
+local mod = Core.NewMod("GreatSword Auto","GreatSword_Auto")
+mod.EnableCJKFont(24) -- 启用中文字体
 
 local NewActionID = Core.NewActionID
 -- 在这里定义返回值
